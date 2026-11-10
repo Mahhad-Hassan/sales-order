@@ -704,6 +704,12 @@
       <div class="pt-2">
         <button class="add-row-button w-full" type="button" [disabled]="orderForm.disabled" (click)="addRow()"><span class="text-[18px] leading-none" aria-hidden="true">+</span> Add Row</button>
       </div>
+      <div class="mt-4 flex justify-end">
+        <div class="order-total-summary">
+          <span class="order-total-label">TOTAL INCLUDING TAX</span>
+          <input class="order-total-input" aria-label="Total balance including tax" type="text" formControlName="totalBalanceIncludingTax" readonly />
+        </div>
+      </div>
       <datalist id="sales-order-items">
         @for (item of orderItems(); track item.item_code) {
           <option [value]="item.item_name">{{ item.item_code }}</option>
@@ -809,10 +815,6 @@
           @if (orderMessage()) {
             <p class="m-0 w-full text-sm text-[#355224]" role="status">{{ orderMessage() }}</p>
           }
-        </div>
-        <div class="order-total-summary">
-          <span class="order-total-label">TOTAL INCLUDING TAX</span>
-          <input class="order-total-input" aria-label="Total balance including tax" type="text" formControlName="totalBalanceIncludingTax" readonly />
         </div>
       </div>
     </section>
