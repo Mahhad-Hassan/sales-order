@@ -2,7 +2,7 @@ import { Component, DestroyRef, HostListener, computed, inject, signal } from '@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subject, catchError, debounceTime, finalize, forkJoin, of, switchMap, throwError, timeout } from 'rxjs';
+import { Subject, catchError, debounceTime, finalize, forkJoin, map, of, switchMap, throwError, timeout, timer } from 'rxjs';
 import { CustomerAddressOption, CustomerOption, EMPTY_CUSTOMER_PARTY } from './models/customer-option.model';
 import { calculatePaymentDueDate, formatDateForInput } from './models/payment-term-date';
 import {
@@ -18,6 +18,7 @@ import {
   SalesOrderRecord,
   SalesOrderTaxRecord,
   SellingPriceListOption,
+  WorkflowConfiguration,
   WorkflowTransition,
 } from './models/sales-order.model';
 import { FrappeAuthService } from './services/frappe-auth.service';
@@ -54,6 +55,7 @@ export class App {
   private customerDetailsRequest = 0;
   private orderDetailsRequest = 0;
   private documentStatusRequest = 0;
+  private workflowConfigurationRequest = 0;
   private workflowTransitionRequest = 0;
   private assignmentOptionsRequest = 0;
   private assignmentGroupRequest = 0;
@@ -125,6 +127,8 @@ export class App {
   protected readonly workflowStateStyles = signal<Record<string, string>>({});
   protected readonly documentStatusesLoading = signal(false);
   protected readonly documentStatusesError = signal('');
+  protected readonly salesOrderWorkflow = signal<WorkflowConfiguration | null>(null);
+  protected readonly salesOrderWorkflowState = signal('');
   protected readonly salesOrderWorkflowActive = signal(false);
   protected readonly workflowTransitions = signal<WorkflowTransition[]>([]);
   protected readonly workflowTransitionMenuOpen = signal(false);
@@ -188,6 +192,40 @@ export class App {
 
   constructor() {
     this.loadSalesOrderOptions();
+    timer(30_000, 30_000).pipe(
+      switchMap(() => {
+        const orderName = this.orderName;
+        return forkJoin({
+          workflow: this.salesOrders.getActiveWorkflowConfiguration('Sales Order'),
+          workflowStateStyles: this.salesOrders.getWorkflowStateStyles(),
+          order: orderName ? this.salesOrders.getSalesOrder(orderName) : of(null),
+        }).pipe(map((result) => ({ ...result, orderName })));
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: ({ workflow, workflowStateStyles, order, orderName }) => {
+        if (orderName !== this.orderName) {
+          return;
+        }
+        this.workflowStateStyles.set(workflowStateStyles);
+        this.setSalesOrderWorkflow(workflow, order ?? undefined);
+        if (order && this.orderName === order.name) {
+          this.loadedSalesOrderSnapshot = order;
+          this.orderDocstatus.set(order.docstatus);
+          this.canUpdateOrder.set(order.docstatus === 0);
+          if (order.docstatus === 0) {
+            this.orderForm.enable({ emitEvent: false });
+          } else {
+            this.orderForm.disable({ emitEvent: false });
+          }
+          this.refreshDocumentStatuses(order);
+          this.refreshWorkflowTransitions(order.name);
+        }
+      },
+      error: (error: unknown) => {
+        this.workflowTransitionError.set(`Could not refresh workflow configuration: ${this.errorMessage(error)}`);
+      },
+    });
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const name = params.get('name') ?? '';
       if (name && name !== this.initializedOrderName) {
@@ -726,7 +764,8 @@ export class App {
   }
 
   protected applyWorkflowTransition(transition: WorkflowTransition): void {
-    if (!this.orderName || !this.salesOrderWorkflowActive() || this.workflowTransitionsLoading()) {
+    if (!this.orderName || !this.salesOrderWorkflowActive() || !this.salesOrderWorkflowState().trim()
+      || this.workflowTransitionsLoading()) {
       return;
     }
     if (this.orderForm.dirty) {
@@ -745,6 +784,7 @@ export class App {
       next: (order) => {
         this.orderDocstatus.set(order.docstatus);
         this.loadedSalesOrderSnapshot = order;
+        this.setSalesOrderWorkflow(this.salesOrderWorkflow(), order);
         this.canUpdateOrder.set(order.docstatus === 0);
         if (order.docstatus === 1 || order.docstatus === 2) {
           this.orderForm.disable({ emitEvent: false });
@@ -754,7 +794,7 @@ export class App {
         this.orderForm.markAsPristine();
         this.orderMessage.set(`Sales Order ${order.name}: ${transition.action} completed.`);
         this.refreshDocumentStatuses(order);
-        this.refreshWorkflowTransitions(order.name);
+        this.refreshWorkflowConfiguration(order);
       },
       error: (error: unknown) => {
         this.workflowTransitionError.set(`Could not apply "${transition.action}": ${this.errorMessage(error)}`);
@@ -896,6 +936,11 @@ export class App {
               credit_months: selectedTerm.credit_months ?? 0,
             }]
           : this.loadedPaymentSchedule.map((payment) => ({ ...payment }));
+        const workflow = this.salesOrderWorkflow();
+        const workflowStateField = workflow?.workflow_state_field?.trim();
+        const workflowState = this.orderName
+          ? this.salesOrderWorkflowState()
+          : this.salesOrderWorkflowState() || this.workflowInitialState(workflow);
         const payload: Record<string, unknown> = {
           doctype: 'Sales Order',
           naming_series: this.namingSeries,
@@ -923,6 +968,7 @@ export class App {
           contact_mobile: this.orderForm.controls.billTo.controls.phoneNo.value || null,
           contact_email: this.orderForm.controls.billTo.controls.email.value || null,
           payment_schedule: schedule,
+          ...(workflowStateField && workflowState ? { [workflowStateField]: workflowState } : {}),
         };
         return this.salesOrders.saveSalesOrder(payload, this.orderName || undefined).pipe(
           switchMap((saved) => submitAfterSave
@@ -939,6 +985,7 @@ export class App {
         this.loadedSalesOrderSnapshot = saved;
         this.currentOrderName.set(saved.name);
         this.orderDocstatus.set(saved.docstatus);
+        this.setSalesOrderWorkflow(this.salesOrderWorkflow(), saved);
         this.loadedPaymentSchedule = saved.payment_schedule ?? [];
         this.loadedPaymentTermName = this.loadedPaymentSchedule[0]?.payment_term ?? '';
         this.orderTaxes.set(saved.taxes ?? []);
@@ -963,7 +1010,7 @@ export class App {
         this.orderForm.markAsPristine();
         this.updateOrderOption(saved);
         this.refreshDocumentStatuses(saved);
-        this.refreshWorkflowTransitions(saved.name);
+        this.refreshWorkflowConfiguration(saved);
       },
       error: (error: unknown) => this.orderError.set(this.errorMessage(error)),
     });
@@ -981,9 +1028,11 @@ export class App {
           priceList.selling === 1 && priceList.enabled === 1,
         ));
         this.salesOrderOptions.set(options.orders);
-        this.salesOrderWorkflowActive.set(Boolean(options.salesOrderWorkflowStateField));
-        if (this.orderName) {
-          this.refreshWorkflowTransitions(this.orderName);
+        this.workflowStateStyles.set(options.workflowStateStyles);
+        this.setSalesOrderWorkflow(options.salesOrderWorkflow);
+        if (this.loadedSalesOrderSnapshot) {
+          this.setSalesOrderWorkflow(options.salesOrderWorkflow, this.loadedSalesOrderSnapshot);
+          this.refreshWorkflowTransitions(this.loadedSalesOrderSnapshot.name);
         }
         const namingSeries = options.salesOrderMetadata.fields.find((field) => field.fieldname === 'naming_series');
         this.namingSeries = namingSeries?.default
@@ -1046,7 +1095,8 @@ export class App {
         this.currentOrderName.set(order.name);
         this.orderDocstatus.set(order.docstatus);
         this.refreshDocumentStatuses(order);
-        this.refreshWorkflowTransitions(order.name);
+        this.loadedSalesOrderSnapshot = order;
+        this.refreshWorkflowConfiguration(order);
         this.loadedPaymentSchedule = order.payment_schedule ?? [];
         this.loadedPaymentTermName = this.loadedPaymentSchedule[0]?.payment_term ?? '';
         this.loadedSalesOrderSnapshot = order;
@@ -1160,7 +1210,7 @@ export class App {
     const requestId = ++this.workflowTransitionRequest;
     this.workflowTransitionMenuOpen.set(false);
     this.workflowTransitionError.set('');
-    if (!name || !this.salesOrderWorkflowActive()) {
+    if (!name || !this.salesOrderWorkflowActive() || !this.salesOrderWorkflowState().trim()) {
       this.workflowTransitions.set([]);
       this.workflowTransitionsLoading.set(false);
       return;
@@ -1191,6 +1241,63 @@ export class App {
     });
   }
 
+  private refreshWorkflowConfiguration(order: SalesOrderRecord): void {
+    const requestId = ++this.workflowConfigurationRequest;
+    forkJoin({
+      workflow: this.salesOrders.getActiveWorkflowConfiguration('Sales Order'),
+      workflowStateStyles: this.salesOrders.getWorkflowStateStyles(),
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: ({ workflow, workflowStateStyles }) => {
+        if (requestId !== this.workflowConfigurationRequest || this.orderName !== order.name) {
+          return;
+        }
+        this.workflowStateStyles.set(workflowStateStyles);
+        this.setSalesOrderWorkflow(workflow, order);
+        this.refreshWorkflowTransitions(order.name);
+      },
+      error: (error: unknown) => {
+        if (requestId !== this.workflowConfigurationRequest || this.orderName !== order.name) {
+          return;
+        }
+        this.setSalesOrderWorkflow(null, order);
+        this.workflowTransitionError.set(`Could not load workflow configuration: ${this.errorMessage(error)}`);
+      },
+    });
+  }
+
+  private setSalesOrderWorkflow(
+    workflow: WorkflowConfiguration | null,
+    order?: SalesOrderRecord,
+  ): void {
+    this.salesOrderWorkflow.set(workflow);
+    const stateField = workflow?.workflow_state_field?.trim();
+    const active = Boolean(workflow && workflow.is_active === 1 && stateField);
+    this.salesOrderWorkflowActive.set(active);
+    const savedState = order && stateField ? order[stateField] : '';
+    const workflowState = typeof savedState === 'string' && savedState.trim()
+      ? savedState.trim()
+      : order ? '' : this.workflowInitialState(workflow);
+    this.salesOrderWorkflowState.set(workflowState);
+    if (!order) {
+      this.documentStatuses.update((statuses) => ({
+        ...statuses,
+        salesOrder: workflowState || 'Not Created',
+      }));
+    }
+    if (!active || !workflowState) {
+      this.workflowTransitions.set([]);
+      this.workflowTransitionMenuOpen.set(false);
+    }
+  }
+
+  private workflowInitialState(workflow: WorkflowConfiguration | null): string {
+    return workflow?.states?.find((state) => Number(state.doc_status) === 0)?.state?.trim()
+      || workflow?.states?.[0]?.state?.trim()
+      || '';
+  }
+
   private resetForNewOrder(): void {
     this.orderDetailsRequest++;
     this.documentStatusRequest++;
@@ -1204,6 +1311,7 @@ export class App {
       deliveryNote: 'Not Created',
       salesInvoice: 'Not Created',
     });
+    this.setSalesOrderWorkflow(this.salesOrderWorkflow());
     this.documentStatusesLoading.set(false);
     this.documentStatusesError.set('');
     this.orderLoading.set(false);

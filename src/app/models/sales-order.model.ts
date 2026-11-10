@@ -156,6 +156,18 @@ export interface WorkflowConfiguration {
   document_type: string;
   workflow_state_field: string;
   is_active: number;
+  conditions?: Array<{ condition: string }>;
+  states?: WorkflowStateDefinition[];
+  transitions?: WorkflowTransition[];
+}
+
+export interface WorkflowStateDefinition {
+  state: string;
+  doc_status: number | string;
+  allow_edit?: string | null;
+  update_field?: string | null;
+  update_value?: string | null;
+  is_optional_state?: number;
 }
 
 export interface WorkflowTransition {
@@ -163,6 +175,7 @@ export interface WorkflowTransition {
   action: string;
   next_state: string;
   allowed: string;
+  condition?: string | null;
 }
 
 export interface WorkflowStateOption {

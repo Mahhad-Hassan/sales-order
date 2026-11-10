@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { EMPTY, concatMap, expand, forkJoin, from, map, mergeMap, Observable, of, reduce, switchMap, tap } from 'rxjs';
+import { EMPTY, concatMap, expand, forkJoin, from, map, mergeMap, Observable, of, reduce, switchMap, tap, throwError } from 'rxjs';
 import {
   CompanyOption,
   AssignmentUserGroupOption,
@@ -35,7 +35,8 @@ export class FrappeSalesOrderService {
     priceLists: SellingPriceListOption[];
     orders: SalesOrderListOption[];
     salesOrderMetadata: FrappeDocTypeMetadata;
-    salesOrderWorkflowStateField: string | null;
+    salesOrderWorkflow: WorkflowConfiguration | null;
+    workflowStateStyles: Record<string, string>;
   }> {
     return forkJoin({
       companies: this.api.getList<CompanyOption>(
@@ -71,7 +72,8 @@ export class FrappeSalesOrderService {
         100,
       ),
       salesOrderMetadata: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Sales Order'),
-      salesOrderWorkflowStateField: this.getActiveWorkflowStateField('Sales Order'),
+      salesOrderWorkflow: this.getActiveWorkflowConfiguration('Sales Order'),
+      workflowStateStyles: this.getWorkflowStateStyles(),
     });
   }
 
@@ -80,16 +82,44 @@ export class FrappeSalesOrderService {
   }
 
   getSalesOrderWorkflowTransitions(name: string): Observable<WorkflowTransition[]> {
-    return this.api.callMethod<WorkflowTransition[]>('frappe.model.workflow.get_transitions', {
-      doc: JSON.stringify({ doctype: 'Sales Order', name }),
-    });
+    if (!name.trim()) {
+      return of([]);
+    }
+    return this.getActiveWorkflowConfiguration('Sales Order').pipe(
+      switchMap((workflow) => {
+        const stateField = workflow?.workflow_state_field?.trim();
+        if (!workflow || workflow.is_active !== 1 || !stateField) {
+          return of([]);
+        }
+        return this.getSalesOrder(name).pipe(
+          switchMap((order) => {
+            const state = order[stateField];
+            if (typeof state !== 'string' || !state.trim()) {
+              return of([]);
+            }
+            return this.api.callMethod<WorkflowTransition[]>('frappe.model.workflow.get_transitions', {
+              doc: JSON.stringify(order),
+            });
+          }),
+        );
+      }),
+    );
   }
 
   applySalesOrderWorkflowAction(name: string, action: string): Observable<SalesOrderRecord> {
-    return this.api.callMethod<SalesOrderRecord>('frappe.model.workflow.apply_workflow', {
-      doc: JSON.stringify({ doctype: 'Sales Order', name }),
-      action,
-    }).pipe(switchMap(() => this.getSalesOrder(name)));
+    return this.getSalesOrderWorkflowTransitions(name).pipe(
+      switchMap((transitions) => {
+        if (!transitions.some((transition) => transition.action === action)) {
+          return throwError(() =>
+            new Error('This workflow action is no longer available for your account. Refresh the Sales Order and try again.'),
+          );
+        }
+        return this.api.callMethod<SalesOrderRecord>('frappe.model.workflow.apply_workflow', {
+          doc: JSON.stringify({ doctype: 'Sales Order', name }),
+          action,
+        }).pipe(switchMap(() => this.getSalesOrder(name)));
+      }),
+    );
   }
 
   getAssignmentOptions(): Observable<{
@@ -150,8 +180,9 @@ export class FrappeSalesOrderService {
   }
 
   getAllSalesOrders(): Observable<SalesOrderListOption[]> {
-    return this.getActiveWorkflowStateField('Sales Order').pipe(
-      switchMap((workflowStateField) => {
+    return this.getActiveWorkflowConfiguration('Sales Order').pipe(
+      switchMap((workflow) => {
+        const workflowStateField = workflow?.workflow_state_field?.trim();
         const fields = [
           'name',
           'customer',
@@ -168,9 +199,11 @@ export class FrappeSalesOrderService {
         return this.getAllPages<SalesOrderListOption>('Sales Order', fields, []).pipe(
           map((orders) => orders.map((order) => ({
             ...order,
-            salesOrderStatus: workflowStateField
-              ? this.readStringField(order, workflowStateField) || order.status || this.documentStatus(order.docstatus)
-              : order.status || this.documentStatus(order.docstatus),
+            salesOrderStatus: (workflowStateField
+              ? this.readStringField(order, workflowStateField)
+              : '')
+              || order.status
+              || this.documentStatus(order.docstatus),
           }))),
         );
       }),
@@ -182,24 +215,27 @@ export class FrappeSalesOrderService {
       return of({});
     }
 
-    return this.getActiveWorkflowStateField('Sales Order').pipe(
-      switchMap((workflowStateField) => from(this.chunks(salesOrderNames, 50)).pipe(
-        concatMap((chunk) => this.getAllPages<SalesOrderListOption>(
-          'Sales Order',
-          ['name', 'status', 'docstatus', ...(workflowStateField ? [workflowStateField] : [])],
-          [['name', 'in', chunk]],
-        )),
-        reduce((documents, page) => {
-          documents.push(...page);
-          return documents;
-        }, [] as SalesOrderListOption[]),
-        map((documents) => Object.fromEntries(documents.map((order) => [
-          order.name,
-          (workflowStateField ? this.readStringField(order, workflowStateField) : '')
-            || order.status
-            || this.documentStatus(order.docstatus),
-        ]))),
-      )),
+    return this.getActiveWorkflowConfiguration('Sales Order').pipe(
+      switchMap((workflow) => {
+        const workflowStateField = workflow?.workflow_state_field?.trim();
+        return from(this.chunks(salesOrderNames, 50)).pipe(
+          concatMap((chunk) => this.getAllPages<SalesOrderListOption>(
+            'Sales Order',
+            ['name', 'status', 'docstatus', ...(workflowStateField ? [workflowStateField] : [])],
+            [['name', 'in', chunk]],
+          )),
+          reduce((documents, page) => {
+            documents.push(...page);
+            return documents;
+          }, [] as SalesOrderListOption[]),
+          map((documents) => Object.fromEntries(documents.map((order) => [
+            order.name,
+            (workflowStateField ? this.readStringField(order, workflowStateField) : '')
+              || order.status
+              || this.documentStatus(order.docstatus),
+          ]))),
+        );
+      }),
     );
   }
 
@@ -217,28 +253,44 @@ export class FrappeSalesOrderService {
     );
   }
 
-  private getActiveWorkflowStateField(doctype: string): Observable<string | null> {
-    return this.api.getList<WorkflowConfiguration>(
+  private readStringField(record: Record<string, unknown>, fieldName: string): string {
+    const value = record[fieldName];
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  getActiveWorkflowConfiguration(doctype: string): Observable<WorkflowConfiguration | null> {
+    return this.api.getList<Pick<WorkflowConfiguration, 'name' | 'document_type' | 'workflow_state_field' | 'is_active'>>(
       'Workflow',
       ['name', 'document_type', 'workflow_state_field', 'is_active'],
       [['document_type', '=', doctype], ['is_active', '=', 1]],
       100,
     ).pipe(
-      map((workflows) => {
-        const fields = [...new Set(workflows
+      switchMap((workflows) => {
+        const activeWorkflows = workflows.filter((workflow) =>
+          workflow.is_active === 1 && workflow.document_type === doctype,
+        );
+        const stateFields = [...new Set(activeWorkflows
           .map((workflow) => workflow.workflow_state_field?.trim())
           .filter((field): field is string => Boolean(field)))];
-        if (fields.length > 1) {
-          throw new Error(`Multiple active ${doctype} workflows use different state fields. Please check the workflow configuration.`);
+        if (stateFields.length > 1) {
+          return throwError(() => new Error(`Active ${doctype} workflows use different state fields.`));
         }
-        return fields[0] ?? null;
+        const workflow = activeWorkflows[0];
+        return workflow
+          ? this.api.getDocument<WorkflowConfiguration>('Workflow', workflow.name)
+          : of(null);
+      }),
+      map((workflow) => {
+        if (!workflow || workflow.is_active !== 1 || workflow.document_type !== doctype) {
+          return null;
+        }
+        return {
+          ...workflow,
+          states: workflow.states ?? [],
+          transitions: workflow.transitions ?? [],
+        };
       }),
     );
-  }
-
-  private readStringField(record: Record<string, unknown>, fieldName: string): string {
-    const value = record[fieldName];
-    return typeof value === 'string' ? value.trim() : '';
   }
 
   getLinkedDocumentStatuses(
@@ -312,91 +364,79 @@ export class FrappeSalesOrderService {
     salesOrderNames: string[],
     includeStatusCounts = false,
   ): Observable<Record<string, string>> {
-    return this.getActiveWorkflowStateField(parentDocType).pipe(
-      switchMap((workflowStateField) => {
-        const salesOrderChunks = this.chunks(salesOrderNames, 50);
-        return from(salesOrderChunks).pipe(
-          concatMap((chunk) => this.getAllPages<Pick<LinkedDocumentItem, 'name'>>(
-            childDocType,
-            ['name'],
-            [[salesOrderField, 'in', chunk]],
+    const salesOrderChunks = this.chunks(salesOrderNames, 50);
+    return from(salesOrderChunks).pipe(
+      concatMap((chunk) => this.getAllPages<Pick<LinkedDocumentItem, 'name'>>(
+        childDocType,
+        ['name'],
+        [[salesOrderField, 'in', chunk]],
+      )),
+      reduce((items, page) => {
+        items.push(...page);
+        return items;
+      }, [] as Array<Pick<LinkedDocumentItem, 'name'>>),
+      switchMap((childDocuments) => from(childDocuments).pipe(
+        mergeMap((child) => this.api.getDocument<LinkedDocumentItem>(childDocType, child.name), 8),
+        reduce((items, item) => {
+          items.push(item);
+          return items;
+        }, [] as LinkedDocumentItem[]),
+      )),
+      switchMap((items) => {
+        const salesOrdersByParent = new Map<string, Set<string>>();
+        for (const item of items) {
+          const salesOrderName = item[salesOrderField];
+          if (!item.parent || !salesOrderName) {
+            continue;
+          }
+          const linkedOrders = salesOrdersByParent.get(item.parent) ?? new Set<string>();
+          linkedOrders.add(salesOrderName);
+          salesOrdersByParent.set(item.parent, linkedOrders);
+        }
+
+        const parentNames = [...salesOrdersByParent.keys()];
+        if (!parentNames.length) {
+          return of({});
+        }
+
+        return from(this.chunks(parentNames, 50)).pipe(
+          concatMap((chunk) => this.getAllPages<LinkedDocumentStatus>(
+            parentDocType,
+            ['name', 'status', 'docstatus'],
+            [['name', 'in', chunk]],
           )),
-          reduce((items, page) => {
-            items.push(...page);
-            return items;
-          }, [] as Array<Pick<LinkedDocumentItem, 'name'>>),
-          switchMap((childDocuments) => from(childDocuments).pipe(
-            mergeMap((child) => this.api.getDocument<LinkedDocumentItem>(childDocType, child.name), 8),
-            reduce((items, item) => {
-              items.push(item);
-              return items;
-            }, [] as LinkedDocumentItem[]),
-          )),
-          switchMap((items) => {
-            const salesOrdersByParent = new Map<string, Set<string>>();
-            for (const item of items) {
-              const salesOrderName = item[salesOrderField];
-              if (!item.parent || !salesOrderName) {
+          reduce((documents, page) => {
+            documents.push(...page);
+            return documents;
+          }, [] as LinkedDocumentStatus[]),
+          map((documents) => {
+            const statusBySalesOrder = new Map<string, Map<string, number>>();
+            const statusByParent = new Map(documents.map((document) => [
+              document.name,
+              document.docstatus === 0 || document.docstatus === 2
+                ? this.documentStatus(document.docstatus)
+                : document.status || this.documentStatus(document.docstatus),
+            ]));
+            for (const [parentName, linkedSalesOrders] of salesOrdersByParent) {
+              const status = statusByParent.get(parentName);
+              if (!status) {
                 continue;
               }
-              const linkedOrders = salesOrdersByParent.get(item.parent) ?? new Set<string>();
-              linkedOrders.add(salesOrderName);
-              salesOrdersByParent.set(item.parent, linkedOrders);
+              for (const salesOrderName of linkedSalesOrders) {
+                const statuses = statusBySalesOrder.get(salesOrderName) ?? new Map<string, number>();
+                statuses.set(
+                  status,
+                  includeStatusCounts ? (statuses.get(status) ?? 0) + 1 : 1,
+                );
+                statusBySalesOrder.set(salesOrderName, statuses);
+              }
             }
-
-            const parentNames = [...salesOrdersByParent.keys()];
-            if (!parentNames.length) {
-              return of({});
-            }
-
-            const documentFields = [
-              'name',
-              'status',
-              'docstatus',
-              ...(workflowStateField ? [workflowStateField] : []),
-            ];
-            return from(this.chunks(parentNames, 50)).pipe(
-              concatMap((chunk) => this.getAllPages<LinkedDocumentStatus>(
-                parentDocType,
-                documentFields,
-                [['name', 'in', chunk]],
-              )),
-              reduce((documents, page) => {
-                documents.push(...page);
-                return documents;
-              }, [] as LinkedDocumentStatus[]),
-              map((documents) => {
-                const statusBySalesOrder = new Map<string, Map<string, number>>();
-                const statusByParent = new Map(documents.map((document) => [
-                  document.name,
-                  document.docstatus === 0 || document.docstatus === 2
-                    ? this.documentStatus(document.docstatus)
-                    : (workflowStateField ? this.readStringField(document, workflowStateField) : '')
-                      || document.status
-                      || this.documentStatus(document.docstatus),
-                ]));
-                for (const [parentName, linkedSalesOrders] of salesOrdersByParent) {
-                  const status = statusByParent.get(parentName);
-                  if (!status) {
-                    continue;
-                  }
-                  for (const salesOrderName of linkedSalesOrders) {
-                    const statuses = statusBySalesOrder.get(salesOrderName) ?? new Map<string, number>();
-                    statuses.set(
-                      status,
-                      includeStatusCounts ? (statuses.get(status) ?? 0) + 1 : 1,
-                    );
-                    statusBySalesOrder.set(salesOrderName, statuses);
-                  }
-                }
-                return Object.fromEntries([...statusBySalesOrder].map(([name, statuses]) => [
-                  name,
-                  [...statuses].map(([status, count]) => includeStatusCounts
-                    ? `${status} (${count})`
-                    : status).join(', '),
-                ]));
-              }),
-            );
+            return Object.fromEntries([...statusBySalesOrder].map(([name, statuses]) => [
+              name,
+              [...statuses].map(([status, count]) => includeStatusCounts
+                ? `${status} (${count})`
+                : status).join(', '),
+            ]));
           }),
         );
       }),
