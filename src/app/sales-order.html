@@ -618,13 +618,22 @@
         />
       </label>
       <label class="form-field">
-        <span class="form-field-label">PAYMENT TERMS</span>
-        <select class="form-input" aria-label="Payment terms" formControlName="paymentTerms">
+        <span class="form-field-label">PAYMENT TERMS <span aria-hidden="true">*</span></span>
+        <select
+          class="form-input"
+          aria-label="Payment terms"
+          aria-required="true"
+          [attr.aria-invalid]="orderForm.controls.paymentTerms.touched && orderForm.controls.paymentTerms.invalid"
+          formControlName="paymentTerms"
+        >
           <option value="">Select payment term...</option>
           @for (term of paymentTerms(); track term.name) {
             <option [value]="term.name">{{ term.payment_term_name }}</option>
           }
         </select>
+        @if (orderForm.controls.paymentTerms.touched && orderForm.controls.paymentTerms.hasError('required')) {
+          <span class="text-xs text-[#8b3c2c]" role="alert">Payment terms are required.</span>
+        }
       </label>
       <label class="form-field">
         <span class="form-field-label">INCOTERM</span>

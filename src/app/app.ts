@@ -1,6 +1,6 @@
 import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, catchError, debounceTime, finalize, forkJoin, map, of, switchMap, throwError, timeout, timer } from 'rxjs';
 import { CustomerAddressOption, CustomerOption, EMPTY_CUSTOMER_PARTY } from './models/customer-option.model';
@@ -184,7 +184,7 @@ export class App {
     }),
     deliveryDate: [this.today()],
     dueDate: [this.today()],
-    paymentTerms: [''],
+    paymentTerms: this.formBuilder.control('', { nonNullable: true, validators: [Validators.required] }),
     incoterm: [''],
     items: this.itemRows,
     totalBalanceIncludingTax: [''],
@@ -815,6 +815,13 @@ export class App {
     }
     if (this.isExistingOrder() && !this.canUpdateOrder()) {
       this.orderError.set('This Sales Order is submitted and cannot be updated. Create a new draft instead.');
+      return;
+    }
+
+    const paymentTermsControl = this.orderForm.controls.paymentTerms;
+    if (paymentTermsControl.invalid) {
+      paymentTermsControl.markAsTouched();
+      this.orderError.set('Select payment terms before saving.');
       return;
     }
 
