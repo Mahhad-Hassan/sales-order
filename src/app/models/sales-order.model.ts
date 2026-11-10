@@ -78,7 +78,7 @@ export interface SalesOrderRecord extends Record<string, unknown> {
   price_list_currency: string;
   plc_conversion_rate: number;
   incoterm?: string | null;
-  rep?: string | null;
+  custom_rep?: string | null;
   payment_terms_template?: string | null;
   status?: string;
   workflow_state?: string;

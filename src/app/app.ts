@@ -904,7 +904,7 @@ export class App {
             ? this.loadedSalesOrderSnapshot.set_warehouse || company.default_warehouse || null
             : company.default_warehouse || null,
           customer,
-          rep: this.orderForm.controls.salesRep.value || null,
+          custom_rep: this.orderForm.controls.salesRep.value || null,
           order_type: 'Sales',
           transaction_date: transactionDate,
           delivery_date: this.orderForm.controls.deliveryDate.value || null,
@@ -1084,7 +1084,7 @@ export class App {
         this.selectedCustomerLabel.set(order.customer_name || order.customer);
         this.orderForm.patchValue({
           customer: order.customer,
-          salesRep: typeof order.rep === 'string' ? order.rep : '',
+          salesRep: typeof order.custom_rep === 'string' ? order.custom_rep : '',
           date: formatDateForInput(order.transaction_date),
           deliveryDate: formatDateForInput(order.delivery_date) || this.today(),
           dueDate: formatDateForInput(order.payment_schedule?.[0]?.due_date) || this.today(),
