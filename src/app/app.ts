@@ -9,6 +9,7 @@ import {
   AssignmentUserGroupOption,
   AssignmentUserOption,
   CompanyOption,
+  EmployeeOption,
   IncotermOption,
   ItemPriceOption,
   PaymentTermOption,
@@ -92,6 +93,8 @@ export class App {
   protected readonly billingEmailDropdownOpen = signal(false);
   protected readonly shippingEmailDropdownOpen = signal(false);
   protected readonly companies = signal<CompanyOption[]>([]);
+  protected readonly employees = signal<EmployeeOption[]>([]);
+  protected readonly salesRepDropdownOpen = signal(false);
   protected readonly priceLists = signal<SellingPriceListOption[]>([]);
   protected readonly incoterms = signal<IncotermOption[]>([]);
   protected readonly paymentTerms = signal<PaymentTermOption[]>([]);
@@ -142,6 +145,7 @@ export class App {
   protected readonly itemRows = this.formBuilder.array<FormGroup>([this.createRow()]);
   protected readonly orderForm = this.formBuilder.group({
     customer: [''],
+    salesRep: [''],
     date: [this.today()],
     company: [''],
     sellingPriceList: [''],
@@ -889,6 +893,7 @@ export class App {
             ? this.loadedSalesOrderSnapshot.set_warehouse || company.default_warehouse || null
             : company.default_warehouse || null,
           customer,
+          rep: this.orderForm.controls.salesRep.value || null,
           order_type: 'Sales',
           transaction_date: transactionDate,
           delivery_date: this.orderForm.controls.deliveryDate.value || null,
@@ -957,6 +962,7 @@ export class App {
     this.salesOrders.loadOptions().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (options) => {
         this.companies.set(options.companies);
+        this.employees.set(options.employees);
         this.incoterms.set(mergeUniqueByName(options.incoterms, this.incoterms()));
         this.orderItems.set(options.items);
         this.paymentTerms.set(mergeUniqueByName(options.paymentTerms, this.paymentTerms()));
@@ -1067,6 +1073,7 @@ export class App {
         this.selectedCustomerLabel.set(order.customer_name || order.customer);
         this.orderForm.patchValue({
           customer: order.customer,
+          salesRep: typeof order.rep === 'string' ? order.rep : '',
           date: formatDateForInput(order.transaction_date),
           deliveryDate: formatDateForInput(order.delivery_date) || this.today(),
           dueDate: formatDateForInput(order.payment_schedule?.[0]?.due_date) || this.today(),
@@ -1207,6 +1214,7 @@ export class App {
     this.customerLoadError.set('');
     this.orderForm.reset({
       customer: '',
+      salesRep: '',
       date: this.today(),
       company: '',
       sellingPriceList: '',
@@ -1764,6 +1772,76 @@ export class App {
     dropdown.update((open) => !open);
   }
 
+  protected salesRepName(employeeId: string | null | undefined): string {
+    if (!employeeId) {
+      return '';
+    }
+    const employee = this.employees().find((option) => option.name === employeeId);
+    return employee?.employee_name?.trim() || employeeId;
+  }
+
+  protected toggleSalesRepDropdown(): void {
+    this.salesRepDropdownOpen.update((open) => !open);
+  }
+
+  protected selectSalesRep(employeeId: string): void {
+    if (!this.employees().some((employee) => employee.name === employeeId)) {
+      return;
+    }
+    this.orderForm.controls.salesRep.setValue(employeeId);
+    this.orderForm.controls.salesRep.markAsDirty();
+    this.orderForm.markAsDirty();
+    this.salesRepDropdownOpen.set(false);
+  }
+
+  protected handleSalesRepTriggerKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    event.preventDefault();
+    if (!this.salesRepDropdownOpen()) {
+      this.salesRepDropdownOpen.set(true);
+      queueMicrotask(() => this.focusSalesRepOption());
+    } else if (event.key === 'ArrowDown') {
+      this.focusSalesRepOption();
+    } else {
+      this.salesRepDropdownOpen.set(false);
+    }
+  }
+
+  protected handleSalesRepOptionKeydown(event: KeyboardEvent): void {
+    const options = [...document.querySelectorAll<HTMLButtonElement>('#sales-rep-options [role="option"]')];
+    if (!options.length) {
+      return;
+    }
+    const currentIndex = options.indexOf(event.target as HTMLButtonElement);
+    let nextIndex: number | undefined;
+    if (event.key === 'ArrowDown') {
+      nextIndex = (currentIndex + 1) % options.length;
+    } else if (event.key === 'ArrowUp') {
+      nextIndex = (currentIndex - 1 + options.length) % options.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = options.length - 1;
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      this.salesRepDropdownOpen.set(false);
+      document.getElementById('sales-rep-trigger')?.focus();
+      return;
+    }
+    if (nextIndex !== undefined) {
+      event.preventDefault();
+      options[nextIndex].focus();
+    }
+  }
+
+  private focusSalesRepOption(): void {
+    const selectedId = this.orderForm.controls.salesRep.value;
+    const options = [...document.querySelectorAll<HTMLButtonElement>('#sales-rep-options [role="option"]')];
+    (options.find((option) => option.dataset['employeeId'] === selectedId) ?? options[0])?.focus();
+  }
+
   protected handleAddressTriggerKeydown(party: 'billTo' | 'shipTo', event: KeyboardEvent): void {
     if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') {
       return;
@@ -1824,6 +1902,9 @@ export class App {
     if (target instanceof Element && !target.closest('.address-dropdown')) {
       this.billingAddressDropdownOpen.set(false);
       this.shippingAddressDropdownOpen.set(false);
+    }
+    if (target instanceof Element && !target.closest('.sales-rep-dropdown')) {
+      this.salesRepDropdownOpen.set(false);
     }
   }
 

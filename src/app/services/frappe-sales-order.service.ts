@@ -4,6 +4,7 @@ import {
   CompanyOption,
   AssignmentUserGroupOption,
   AssignmentUserOption,
+  EmployeeOption,
   IncotermOption,
   ItemPriceOption,
   LinkedDocumentItem,
@@ -27,6 +28,7 @@ export class FrappeSalesOrderService {
 
   loadOptions(): Observable<{
     companies: CompanyOption[];
+    employees: EmployeeOption[];
     incoterms: IncotermOption[];
     items: SalesOrderItemOption[];
     paymentTerms: PaymentTermOption[];
@@ -42,6 +44,7 @@ export class FrappeSalesOrderService {
         [],
         500,
       ),
+      employees: this.getAllPages<EmployeeOption>('Employee', ['name', 'employee_name'], []),
       incoterms: this.api.getList<IncotermOption>('Incoterm', ['name', 'title'], [], 500),
       items: this.api.getList<SalesOrderItemOption>(
         'Item',

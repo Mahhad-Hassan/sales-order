@@ -189,6 +189,42 @@
             (input)="updateDateInput($event, 'date')"
           />
         </label>
+        <div class="form-field">
+          <span class="form-field-label">Sales Rep</span>
+          <div class="sales-rep-dropdown">
+            <button
+              id="sales-rep-trigger"
+              class="customer-select relative flex min-h-[44px] w-full items-center justify-between rounded-[10px] border px-3 text-left text-sm font-normal cursor-pointer"
+              type="button"
+              aria-haspopup="listbox"
+              aria-controls="sales-rep-options"
+              aria-label="Select Sales Rep"
+              [disabled]="orderForm.disabled"
+              [attr.aria-expanded]="salesRepDropdownOpen()"
+              (click)="toggleSalesRepDropdown()"
+              (keydown)="handleSalesRepTriggerKeydown($event)"
+            >
+              <span class="truncate">{{ salesRepName(orderForm.controls.salesRep.value) || 'Select Sales Rep...' }}</span>
+              <span class="absolute right-3 h-0 w-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-[currentColor]" aria-hidden="true"></span>
+            </button>
+            @if (salesRepDropdownOpen()) {
+              <div id="sales-rep-options" class="sales-rep-options" role="listbox" aria-label="Sales Rep employees" (keydown)="handleSalesRepOptionKeydown($event)">
+                @for (employee of employees(); track employee.name) {
+                  <button
+                    class="sales-rep-option"
+                    type="button"
+                    role="option"
+                    [attr.data-employee-id]="employee.name"
+                    [attr.aria-selected]="orderForm.controls.salesRep.value === employee.name"
+                    (click)="selectSalesRep(employee.name)"
+                  >{{ employee.employee_name || employee.name }} ({{ employee.name }})</button>
+                } @empty {
+                  <p class="sales-rep-empty" role="status">No employees available.</p>
+                }
+              </div>
+            }
+          </div>
+        </div>
       </div>
     @if (optionsLoading() || orderLoading()) {
       <p class="mb-2 text-sm text-[#555]" role="status">

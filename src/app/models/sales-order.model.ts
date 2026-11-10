@@ -17,6 +17,11 @@ export interface CompanyOption {
   default_warehouse?: string | null;
 }
 
+export interface EmployeeOption {
+  name: string;
+  employee_name?: string | null;
+}
+
 export interface AssignmentUserOption {
   name: string;
   full_name?: string;
@@ -73,6 +78,7 @@ export interface SalesOrderRecord extends Record<string, unknown> {
   price_list_currency: string;
   plc_conversion_rate: number;
   incoterm?: string | null;
+  rep?: string | null;
   payment_terms_template?: string | null;
   status?: string;
   workflow_state?: string;
