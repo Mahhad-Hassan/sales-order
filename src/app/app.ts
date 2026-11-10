@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -95,6 +95,17 @@ export class App {
   protected readonly companies = signal<CompanyOption[]>([]);
   protected readonly employees = signal<EmployeeOption[]>([]);
   protected readonly salesRepDropdownOpen = signal(false);
+  protected readonly salesRepSearch = signal('');
+  protected readonly filteredSalesRepEmployees = computed(() => {
+    const query = this.salesRepSearch().trim().toLocaleLowerCase();
+    if (!query) {
+      return this.employees();
+    }
+    return this.employees().filter((employee) =>
+      employee.name.toLocaleLowerCase().includes(query)
+      || (employee.employee_name ?? '').toLocaleLowerCase().includes(query),
+    );
+  });
   protected readonly priceLists = signal<SellingPriceListOption[]>([]);
   protected readonly incoterms = signal<IncotermOption[]>([]);
   protected readonly paymentTerms = signal<PaymentTermOption[]>([]);
@@ -1781,7 +1792,16 @@ export class App {
   }
 
   protected toggleSalesRepDropdown(): void {
-    this.salesRepDropdownOpen.update((open) => !open);
+    const opening = !this.salesRepDropdownOpen();
+    this.salesRepSearch.set('');
+    this.salesRepDropdownOpen.set(opening);
+    if (opening) {
+      queueMicrotask(() => document.getElementById('sales-rep-search')?.focus());
+    }
+  }
+
+  protected updateSalesRepSearch(event: Event): void {
+    this.salesRepSearch.set((event.target as HTMLInputElement).value);
   }
 
   protected selectSalesRep(employeeId: string): void {
@@ -1792,6 +1812,7 @@ export class App {
     this.orderForm.controls.salesRep.markAsDirty();
     this.orderForm.markAsDirty();
     this.salesRepDropdownOpen.set(false);
+    this.salesRepSearch.set('');
   }
 
   protected handleSalesRepTriggerKeydown(event: KeyboardEvent): void {
@@ -1801,7 +1822,8 @@ export class App {
     event.preventDefault();
     if (!this.salesRepDropdownOpen()) {
       this.salesRepDropdownOpen.set(true);
-      queueMicrotask(() => this.focusSalesRepOption());
+      this.salesRepSearch.set('');
+      queueMicrotask(() => document.getElementById('sales-rep-search')?.focus());
     } else if (event.key === 'ArrowDown') {
       this.focusSalesRepOption();
     } else {
@@ -1833,6 +1855,18 @@ export class App {
     if (nextIndex !== undefined) {
       event.preventDefault();
       options[nextIndex].focus();
+    }
+  }
+
+  protected handleSalesRepSearchKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.salesRepDropdownOpen.set(false);
+      this.salesRepSearch.set('');
+      document.getElementById('sales-rep-trigger')?.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.focusSalesRepOption();
     }
   }
 

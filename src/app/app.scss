@@ -193,6 +193,28 @@
   box-shadow: 0 10px 24px rgb(20 51 43 / 14%);
 }
 
+.sales-rep-search {
+  position: sticky;
+  top: 0;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 1px solid #e3eae6;
+  border-radius: 10px 10px 0 0;
+  background: #fff;
+  color: #1c2b26;
+  font: inherit;
+  font-size: 13px;
+}
+
+.sales-rep-search:focus {
+  border-color: #24765f;
+  outline: 0;
+  box-shadow: 0 0 0 2px rgb(36 118 95 / 18%);
+}
+
 .sales-rep-option {
   display: block;
   width: 100%;
