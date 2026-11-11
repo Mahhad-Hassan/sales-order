@@ -667,6 +667,18 @@
   width: 100%;
 }
 
+.workflow-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.workflow-transition-action {
+  min-width: 150px;
+}
+
 .order-save-action {
   min-width: 220px;
   min-height: 54px;

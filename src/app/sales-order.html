@@ -804,29 +804,21 @@
           >Print</button>
           }
           @if (isExistingOrder() && salesOrderWorkflowActive()) {
-            <div class="relative">
-              <button
-                class="secondary-action"
-                type="button"
-                [disabled]="savingOrder() || orderLoading() || workflowTransitionsLoading() || !workflowTransitions().length || orderForm.dirty"
-                [attr.aria-expanded]="workflowTransitionMenuOpen()"
-                aria-haspopup="menu"
-                (click)="toggleWorkflowTransitionMenu()"
-              >{{ workflowTransitionsLoading() ? 'Loading actions...' : 'Next Action' }}</button>
-              @if (workflowTransitionMenuOpen()) {
-                <div class="absolute bottom-[calc(100%+8px)] left-0 z-10 grid min-w-44 gap-1 rounded-xl border border-[#e3eae6] bg-white p-2 shadow-xl" role="menu" aria-label="Available workflow actions">
-                  @for (transition of workflowTransitions(); track transition.action) {
-                    <button
-                      class="rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#24765f] hover:bg-[#e6f3ee] focus-visible:outline-2 focus-visible:outline-[#24765f]"
-                      type="button"
-                      role="menuitem"
-                      [disabled]="workflowTransitionsLoading()"
-                      (click)="applyWorkflowTransition(transition)"
-                    >{{ transition.action }}</button>
-                  }
-                </div>
-              }
-            </div>
+            @if (workflowTransitionsLoading()) {
+              <p class="m-0 text-sm text-[#6d7d77]" role="status">Loading workflow actions...</p>
+            }
+            @if (workflowTransitions().length) {
+              <div class="workflow-action-buttons" role="group" aria-label="Available workflow actions">
+                @for (transition of workflowTransitions(); track transition.action) {
+                  <button
+                    class="primary-action workflow-transition-action"
+                    type="button"
+                    [disabled]="savingOrder() || orderLoading() || workflowTransitionsLoading() || orderForm.dirty"
+                    (click)="applyWorkflowTransition(transition)"
+                  >{{ transition.action }}</button>
+                }
+              </div>
+            }
           } @else if (isExistingOrder() && canUpdateOrder()) {
             <button
               class="secondary-action"

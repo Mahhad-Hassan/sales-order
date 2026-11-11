@@ -131,7 +131,6 @@ export class App {
   protected readonly salesOrderWorkflowState = signal('');
   protected readonly salesOrderWorkflowActive = signal(false);
   protected readonly workflowTransitions = signal<WorkflowTransition[]>([]);
-  protected readonly workflowTransitionMenuOpen = signal(false);
   protected readonly workflowTransitionsLoading = signal(false);
   protected readonly workflowTransitionError = signal('');
   protected readonly transactionDateDisplay = signal(this.formatDateForDisplay(this.today()));
@@ -802,13 +801,6 @@ export class App {
     this.persistOrder(true);
   }
 
-  protected toggleWorkflowTransitionMenu(): void {
-    if (this.workflowTransitionsLoading() || !this.workflowTransitions().length) {
-      return;
-    }
-    this.workflowTransitionMenuOpen.update((open) => !open);
-  }
-
   protected applyWorkflowTransition(transition: WorkflowTransition): void {
     if (!this.orderName || !this.salesOrderWorkflowActive() || !this.salesOrderWorkflowState().trim()
       || this.workflowTransitionsLoading()) {
@@ -816,12 +808,10 @@ export class App {
     }
     if (this.orderForm.dirty) {
       this.workflowTransitionError.set('Save your changes before applying a workflow action.');
-      this.workflowTransitionMenuOpen.set(false);
       return;
     }
 
     this.workflowTransitionsLoading.set(true);
-    this.workflowTransitionMenuOpen.set(false);
     this.workflowTransitionError.set('');
     this.salesOrders.applySalesOrderWorkflowAction(this.orderName, transition.action).pipe(
       finalize(() => this.workflowTransitionsLoading.set(false)),
@@ -1115,7 +1105,6 @@ export class App {
     this.workflowTransitionRequest++;
     this.workflowTransitions.set([]);
     this.workflowTransitionsLoading.set(false);
-    this.workflowTransitionMenuOpen.set(false);
     this.workflowTransitionError.set('');
     this.documentStatusRequest++;
     this.documentStatuses.set({
@@ -1261,7 +1250,6 @@ export class App {
 
   private refreshWorkflowTransitions(name: string): void {
     const requestId = ++this.workflowTransitionRequest;
-    this.workflowTransitionMenuOpen.set(false);
     this.workflowTransitionError.set('');
     if (!name || !this.salesOrderWorkflowActive() || !this.salesOrderWorkflowState().trim()) {
       this.workflowTransitions.set([]);
@@ -1341,7 +1329,6 @@ export class App {
     }
     if (!active || !workflowState) {
       this.workflowTransitions.set([]);
-      this.workflowTransitionMenuOpen.set(false);
     }
   }
 
@@ -1357,7 +1344,6 @@ export class App {
     this.workflowTransitionRequest++;
     this.workflowTransitions.set([]);
     this.workflowTransitionsLoading.set(false);
-    this.workflowTransitionMenuOpen.set(false);
     this.workflowTransitionError.set('');
     this.documentStatuses.set({
       salesOrder: 'Not Created',
