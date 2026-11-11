@@ -766,6 +766,19 @@
         }
       </datalist>
     </section>
+    <section class="form-card" aria-label="Remarks">
+      <h2 class="form-section-title"><i aria-hidden="true"></i>Remarks</h2>
+      <label class="form-field">
+        <span class="form-field-label">Remarks</span>
+        <textarea
+          class="form-input min-h-28 resize-y"
+          rows="5"
+          aria-label="Remarks"
+          placeholder="Enter remarks for this Sales Order..."
+          formControlName="remarks"
+        ></textarea>
+      </label>
+    </section>
     @if (itemPriceError()) {
       <p class="mt-2 mb-0 text-xs text-[#8b3c2c]" role="alert">{{ itemPriceError() }}</p>
     }

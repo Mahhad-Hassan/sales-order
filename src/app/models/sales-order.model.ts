@@ -81,6 +81,7 @@ export interface SalesOrderRecord extends Record<string, unknown> {
   incoterm?: string | null;
   custom_rep?: string | null;
   payment_terms_template?: string | null;
+  terms?: string | null;
   status?: string;
   workflow_state?: string;
   total?: number;

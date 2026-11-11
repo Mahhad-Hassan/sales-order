@@ -187,6 +187,7 @@ export class App {
     dueDate: [this.today()],
     paymentTerms: this.formBuilder.control('', { nonNullable: true, validators: [Validators.required] }),
     incoterm: [''],
+    remarks: [''],
     items: this.itemRows,
     totalBalanceIncludingTax: [''],
   });
@@ -1124,6 +1125,7 @@ export class App {
           items,
           total: formTotal ?? itemsTotal,
           incoterm: this.orderForm.controls.incoterm.value || null,
+          terms: this.orderForm.controls.remarks.value || '',
           customer_address: this.selectedBillingAddress() || null,
           shipping_address_name: this.selectedShippingAddress() || null,
           contact_mobile: this.orderForm.controls.billTo.controls.phoneNo.value || null,
@@ -1151,6 +1153,7 @@ export class App {
         this.loadedPaymentTermName = this.loadedPaymentSchedule[0]?.payment_term ?? '';
         this.orderTaxes.set(saved.taxes ?? []);
         this.replaceItems(saved.items ?? []);
+        this.orderForm.controls.remarks.setValue(saved.terms ?? '', { emitEvent: false });
         this.orderForm.controls.totalBalanceIncludingTax.setValue(String(saved.total ?? ''), { emitEvent: false });
         this.loadedCurrencySettings = {
           company: saved.company,
@@ -1299,6 +1302,7 @@ export class App {
           deliveryDate: formatDateForInput(order.delivery_date) || this.today(),
           dueDate: formatDateForInput(order.payment_schedule?.[0]?.due_date) || this.today(),
           incoterm: order.incoterm ?? '',
+          remarks: order.terms ?? '',
           company: order.company,
           sellingPriceList: order.selling_price_list,
           paymentTerms: order.payment_schedule?.[0]?.payment_term ?? '',
@@ -1498,6 +1502,7 @@ export class App {
       dueDate: this.today(),
       paymentTerms: '',
       incoterm: '',
+      remarks: '',
       totalBalanceIncludingTax: '',
       billTo: EMPTY_CUSTOMER_PARTY,
       shipTo: EMPTY_CUSTOMER_PARTY,
