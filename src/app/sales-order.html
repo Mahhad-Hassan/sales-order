@@ -795,8 +795,7 @@
       </section>
     }
     <section class="form-card order-footer-card">
-      <div class="order-footer">
-        <div class="order-actions">
+      <div class="order-actions">
           @if (orderDocstatus() === 1) {
           <button
             class="secondary-action"
@@ -838,7 +837,7 @@
           }
           @if (!isExistingOrder() || canUpdateOrder()) {
             <button
-              class="primary-action"
+              class="primary-action order-save-action"
               type="button"
               [disabled]="savingOrder() || optionsLoading() || orderLoading()"
               (click)="saveOrder()"
@@ -861,7 +860,6 @@
           @if (orderMessage()) {
             <p class="m-0 w-full text-sm text-[#355224]" role="status">{{ orderMessage() }}</p>
           }
-        </div>
       </div>
     </section>
       </form>
