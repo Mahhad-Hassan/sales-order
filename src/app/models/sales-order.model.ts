@@ -25,6 +25,7 @@ export interface EmployeeOption {
 export interface AssignmentUserOption {
   name: string;
   full_name?: string;
+  email?: string | null;
 }
 
 export interface AssignmentUserGroupOption {

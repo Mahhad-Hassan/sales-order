@@ -97,10 +97,13 @@ export class FrappeApiService {
   }
 
   callMethod<T>(method: string, args: Record<string, unknown>): Observable<T> {
+    return this.callMethodResponse<T>(method, args).pipe(map((response) => response.message));
+  }
+
+  callMethodResponse<T>(method: string, args: Record<string, unknown>): Observable<FrappeMethodResponse<T>> {
     return this.request(() =>
       this.http
         .post<FrappeMethodResponse<T>>(this.methodUrl(method), args, { withCredentials: true })
-        .pipe(map((response) => response.message)),
     );
   }
 

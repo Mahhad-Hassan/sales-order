@@ -4,6 +4,7 @@ import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Va
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, catchError, concatMap, debounceTime, finalize, forkJoin, from, map, of, switchMap, throwError, timeout, timer, toArray } from 'rxjs';
 import { CustomerAddressOption, CustomerOption, EMPTY_CUSTOMER_PARTY } from './models/customer-option.model';
+import { FrappeMethodResponse } from './models/frappe-api.model';
 import { calculatePaymentDueDate, formatDateForInput } from './models/payment-term-date';
 import {
   AssignmentUserGroupOption,
@@ -561,8 +562,6 @@ export class App {
       return;
     }
 
-    this.assignmentSaving.set(true);
-    this.assignmentError.set('');
     const orderName = this.orderName;
     const assignment = {
       assignTo: this.assignedUserNames(),
@@ -571,6 +570,22 @@ export class App {
       description: this.assignmentComment().trim(),
     };
     const attachments = this.assignmentAttachments();
+    const selectedUsers = assignment.assignTo.map((userName) =>
+      this.assignmentUsers().find((user) => user.name === userName),
+    );
+    const recipients = selectedUsers.flatMap((user) =>
+      user?.email?.trim() ? [user.email.trim()] : [],
+    );
+    if (attachments.length && recipients.length !== selectedUsers.length) {
+      const usersWithoutEmail = selectedUsers
+        .filter((user) => !user?.email?.trim())
+        .map((user) => user?.full_name || user?.name || 'Unknown user');
+      this.assignmentError.set(`Add an email address in Frappe for: ${usersWithoutEmail.join(', ')}.`);
+      return;
+    }
+
+    this.assignmentSaving.set(true);
+    this.assignmentError.set('');
     from(attachments).pipe(
       concatMap((file, index) => this.salesOrders.attachSalesOrderFile(orderName, file).pipe(
         catchError((error: unknown) => throwError(() => new Error(
@@ -578,12 +593,32 @@ export class App {
         ))),
       )),
       toArray(),
-      switchMap(() => this.salesOrders.assignSalesOrder(orderName, assignment).pipe(
+      switchMap((uploadedFiles) => this.salesOrders.assignSalesOrder(orderName, assignment).pipe(
         catchError((error: unknown) => throwError(() => new Error(
           attachments.length
             ? `Attachments were uploaded to the Sales Order, but the assignment could not be created: ${this.errorMessage(error)}`
             : `Could not assign Sales Order: ${this.errorMessage(error)}`,
         ))),
+        switchMap((response) => {
+          const duplicateMessage = this.duplicateAssignmentMessage(response);
+          if (duplicateMessage) {
+            return throwError(() => new Error(
+              `${duplicateMessage}${attachments.length ? ' The files were uploaded to the Sales Order but were not emailed.' : ''}`,
+            ));
+          }
+          return attachments.length
+            ? this.salesOrders.emailSalesOrderAssignment(
+              orderName,
+              recipients,
+              uploadedFiles.map((file) => file.name),
+              assignment.description,
+            ).pipe(
+              catchError((error: unknown) => throwError(() => new Error(
+                `The assignment was created and files were attached to the Sales Order, but the email could not be queued: ${this.errorMessage(error)}`,
+              ))),
+            )
+            : of(null);
+        }),
       )),
       finalize(() => this.assignmentSaving.set(false)),
       takeUntilDestroyed(this.destroyRef),
@@ -591,12 +626,69 @@ export class App {
       next: () => {
         this.assignmentAttachments.set([]);
         this.assignmentDialogOpen.set(false);
-        this.orderMessage.set(`Sales Order ${orderName} assigned successfully.`);
+        this.orderMessage.set(attachments.length
+          ? `Sales Order ${orderName} assigned successfully. Email with attachments queued for the assignees.`
+          : `Sales Order ${orderName} assigned successfully.`);
       },
       error: (error: unknown) => {
         this.assignmentError.set(this.errorMessage(error));
       },
     });
+  }
+
+  private duplicateAssignmentMessage(response: FrappeMethodResponse<unknown>): string {
+    const rawMessages = response._server_messages;
+    if (!rawMessages) {
+      return '';
+    }
+
+    let messages: unknown[];
+    if (Array.isArray(rawMessages)) {
+      messages = rawMessages;
+    } else {
+      try {
+        const parsed: unknown = JSON.parse(rawMessages);
+        messages = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        messages = [rawMessages];
+      }
+    }
+
+    for (const entry of messages) {
+      let message: string | null = null;
+      if (typeof entry === 'string') {
+        try {
+          const parsed: unknown = JSON.parse(entry);
+          if (parsed && typeof parsed === 'object' && 'message' in parsed
+            && typeof parsed.message === 'string') {
+            message = parsed.message;
+          }
+        } catch {
+          message = entry;
+        }
+      } else if (entry && typeof entry === 'object' && 'message' in entry
+        && typeof entry.message === 'string') {
+        message = entry.message;
+      }
+
+      if (message?.includes('Already in the following Users ToDo list')) {
+        return message
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/(?:li|p|div)>/gi, '\n')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/&nbsp;/gi, ' ')
+          .replace(/&amp;/gi, '&')
+          .replace(/&lt;/gi, '<')
+          .replace(/&gt;/gi, '>')
+          .replace(/&quot;/gi, '"')
+          .replace(/&#39;/gi, "'")
+          .replace(/[ \t]+/g, ' ')
+          .replace(/\n\s*/g, '\n')
+          .trim();
+      }
+    }
+
+    return '';
   }
 
   protected documentStatusBackground(status: string): string {

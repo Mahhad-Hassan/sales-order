@@ -18,7 +18,7 @@ import {
   WorkflowTransition,
   WorkflowStateOption,
 } from '../models/sales-order.model';
-import { FrappeDocTypeMetadata } from '../models/frappe-api.model';
+import { FrappeDocTypeMetadata, FrappeMethodResponse } from '../models/frappe-api.model';
 import { FrappeApiService } from './frappe-api.service';
 
 @Injectable({ providedIn: 'root' })
@@ -129,7 +129,7 @@ export class FrappeSalesOrderService {
     return forkJoin({
       users: this.api.getList<AssignmentUserOption>(
         'User',
-        ['name', 'full_name'],
+        ['name', 'full_name', 'email'],
         [['enabled', '=', 1], ['user_type', '=', 'System User']],
         500,
       ),
@@ -155,8 +155,8 @@ export class FrappeSalesOrderService {
       priority: 'Low' | 'Medium' | 'High';
       description: string;
     },
-  ): Observable<unknown> {
-    return this.api.callMethod<unknown>('frappe.desk.form.assign_to.add', {
+  ): Observable<FrappeMethodResponse<unknown>> {
+    return this.api.callMethodResponse<unknown>('frappe.desk.form.assign_to.add', {
       doctype: 'Sales Order',
       name,
       assign_to: JSON.stringify(assignment.assignTo),
@@ -167,8 +167,37 @@ export class FrappeSalesOrderService {
     });
   }
 
-  attachSalesOrderFile(name: string, file: File): Observable<unknown> {
-    return this.api.uploadFile(file, 'Sales Order', name);
+  attachSalesOrderFile(name: string, file: File): Observable<{ name: string }> {
+    return this.api.uploadFile<{ name: string }>(file, 'Sales Order', name);
+  }
+
+  emailSalesOrderAssignment(
+    name: string,
+    recipients: string[],
+    attachmentNames: string[],
+    description: string,
+  ): Observable<unknown> {
+    return this.api.callMethod<unknown>('frappe.core.doctype.communication.email.make', {
+      doctype: 'Sales Order',
+      name,
+      recipients,
+      subject: `Sales Order ${name} assigned to you`,
+      content: description
+        ? `<p>${this.escapeHtml(description)}</p><p>Sales Order: ${this.escapeHtml(name)}</p>`
+        : `<p>Sales Order ${this.escapeHtml(name)} has been assigned to you.</p>`,
+      send_email: true,
+      attachments: attachmentNames,
+    });
+  }
+
+  private escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[character] ?? character);
   }
 
   getItemUoms(itemCode: string): Observable<string[]> {

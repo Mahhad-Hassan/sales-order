@@ -12,6 +12,7 @@ export interface FrappeMessageResponse {
 
 export interface FrappeMethodResponse<T> {
   message: T;
+  _server_messages?: string | string[];
 }
 
 export interface FrappeLoginResponse {

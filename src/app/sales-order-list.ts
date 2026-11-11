@@ -2,7 +2,7 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { EMPTY, catchError, forkJoin, map, switchMap, timer } from 'rxjs';
-import { SalesOrderListOption, WorkflowConfiguration } from './models/sales-order.model';
+import { SalesOrderListOption } from './models/sales-order.model';
 import { FrappeAuthService } from './services/frappe-auth.service';
 import { FrappeSalesOrderService } from './services/frappe-sales-order.service';
 
@@ -21,19 +21,17 @@ export class SalesOrderListPage {
 
   protected readonly orders = signal<SalesOrderListOption[]>([]);
   protected readonly workflowStateStyles = signal<Record<string, string>>({});
-  protected readonly terminalWorkflowStates = signal<Set<string>>(new Set());
   protected readonly searchText = signal('');
   protected readonly currentPage = signal(1);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
   protected readonly filteredOrders = computed(() => {
-    const visibleOrders = this.orders().filter((order) => !this.isTerminalOrder(order));
     const query = this.searchText().trim().toLocaleLowerCase();
     if (!query) {
-      return visibleOrders;
+      return this.orders();
     }
 
-    return visibleOrders.filter((order) => [
+    return this.orders().filter((order) => [
       order.name,
       order.customer,
       order.customer_name,
@@ -72,13 +70,11 @@ export class SalesOrderListPage {
           salesOrders: this.salesOrders.getSalesOrderStatuses(orderNames),
           linkedDocuments: this.salesOrders.getLinkedDocumentStatuses(orderNames),
           workflowStyles: this.salesOrders.getWorkflowStateStyles(),
-          workflow: this.salesOrders.getActiveWorkflowConfiguration('Sales Order'),
         }).pipe(
-          map(({ salesOrders, linkedDocuments, workflowStyles, workflow }) => ({
+          map(({ salesOrders, linkedDocuments, workflowStyles }) => ({
             salesOrders,
             linkedDocuments,
             workflowStyles,
-            terminalWorkflowStates: this.getTerminalWorkflowStates(workflow),
           })),
           catchError((error: unknown) => {
             this.error.set(error instanceof Error
@@ -89,7 +85,7 @@ export class SalesOrderListPage {
         );
       }),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({ salesOrders, linkedDocuments, workflowStyles, terminalWorkflowStates }) => {
+    ).subscribe(({ salesOrders, linkedDocuments, workflowStyles }) => {
       this.orders.update((orders) => orders.map((order) => ({
         ...order,
         salesOrderStatus: salesOrders[order.name] ?? order.salesOrderStatus,
@@ -97,7 +93,6 @@ export class SalesOrderListPage {
         salesInvoiceStatus: linkedDocuments[order.name]?.salesInvoiceStatus ?? order.salesInvoiceStatus,
       })));
       this.workflowStateStyles.set(workflowStyles);
-      this.terminalWorkflowStates.set(terminalWorkflowStates);
     });
   }
 
@@ -125,32 +120,21 @@ export class SalesOrderListPage {
   protected loadOrders(): void {
     this.loading.set(true);
     this.error.set('');
-    forkJoin({
-      orders: this.salesOrders.getAllSalesOrders(),
-      workflow: this.salesOrders.getActiveWorkflowConfiguration('Sales Order'),
-    }).pipe(
-      switchMap(({ orders, workflow }) => forkJoin({
+    this.salesOrders.getAllSalesOrders().pipe(
+      switchMap((orders) => forkJoin({
         linkedStatuses: this.salesOrders.getLinkedDocumentStatuses(orders.map((order) => order.name)),
         workflowStyles: this.salesOrders.getWorkflowStateStyles(),
       }).pipe(map(({ linkedStatuses, workflowStyles }) => ({
-        orders,
-        workflow,
-        linkedStatuses,
-        workflowStyles,
-      })))),
-      map(({ orders, workflow, linkedStatuses, workflowStyles }) => ({
         orders: orders.map((order) => ({
           ...order,
           ...linkedStatuses[order.name],
         })),
         workflowStyles,
-        terminalWorkflowStates: this.getTerminalWorkflowStates(workflow),
-      })),
+      })))),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: ({ orders, workflowStyles, terminalWorkflowStates }) => {
+      next: ({ orders, workflowStyles }) => {
         this.orders.set(orders);
-        this.terminalWorkflowStates.set(terminalWorkflowStates);
         this.currentPage.update((page) => Math.min(page, Math.max(1, Math.ceil(orders.length / this.pageSize))));
         this.workflowStateStyles.set(workflowStyles);
         this.loading.set(false);
@@ -170,23 +154,6 @@ export class SalesOrderListPage {
       return order.status;
     }
     return order.docstatus === 1 ? 'Submitted' : order.docstatus === 2 ? 'Cancelled' : 'Draft';
-  }
-
-  private isTerminalOrder(order: SalesOrderListOption): boolean {
-    if (order.docstatus === 2) {
-      return true;
-    }
-    const status = this.orderStatus(order).trim().toLocaleLowerCase();
-    return ['approved', 'rejected', 'cancelled', 'completed'].includes(status)
-      || this.terminalWorkflowStates().has(status);
-  }
-
-  private getTerminalWorkflowStates(workflow: WorkflowConfiguration | null): Set<string> {
-    const transitions = workflow?.transitions ?? [];
-    return new Set((workflow?.states ?? [])
-      .filter((state) => Number(state.doc_status) > 0
-        || !transitions.some((transition) => transition.state === state.state))
-      .map((state) => state.state.trim().toLocaleLowerCase()));
   }
 
   protected statusValues(status: string | undefined): string[] {
