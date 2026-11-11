@@ -583,7 +583,12 @@
               </div>
             }
 
-            <div class="mt-5 flex justify-end gap-2">
+            <div class="mt-5 flex flex-wrap items-center justify-end gap-2">
+              @if (assignmentError()) {
+                <p class="m-0 mr-auto min-w-0 flex-1 rounded-lg border border-[#f1d4d0] bg-[#fff7f6] px-3 py-2 text-sm text-[#a34539]" role="alert">
+                  {{ assignmentError() }}
+                </p>
+              }
               <button
                 class="toolbar-back rounded-[10px] border px-4 py-2 text-sm font-semibold"
                 type="button"
