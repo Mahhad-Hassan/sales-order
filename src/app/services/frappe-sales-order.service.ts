@@ -156,6 +156,27 @@ export class FrappeSalesOrderService {
     );
   }
 
+  getDefaultOutgoingEmailSender(): Observable<string> {
+    return this.api.getList<{ email_id: string }>(
+      'Email Account',
+      ['email_id'],
+      [['enable_outgoing', '=', 1], ['default_outgoing', '=', 1]],
+      10,
+    ).pipe(
+      map((accounts) => {
+        const senders = [...new Set(accounts
+          .map((account) => account.email_id?.trim())
+          .filter((email): email is string => Boolean(email)))];
+        if (senders.length !== 1) {
+          throw new Error(senders.length
+            ? 'Frappe has more than one default outgoing email sender. Ask an administrator to configure exactly one.'
+            : 'Frappe has no enabled default outgoing email sender.');
+        }
+        return senders[0];
+      }),
+    );
+  }
+
   assignSalesOrder(
     name: string,
     assignment: {
@@ -182,6 +203,7 @@ export class FrappeSalesOrderService {
 
   emailSalesOrderAssignment(
     name: string,
+    sender: string,
     recipients: string[],
     attachmentNames: string[],
     description: string,
@@ -189,6 +211,7 @@ export class FrappeSalesOrderService {
     return this.api.callMethod<unknown>('frappe.core.doctype.communication.email.make', {
       doctype: 'Sales Order',
       name,
+      sender,
       recipients,
       subject: `Sales Order ${name} assigned to you`,
       content: description

@@ -579,24 +579,13 @@ export class App {
 
     this.assignmentSaving.set(true);
     this.assignmentError.set('');
-    from(attachments).pipe(
-      concatMap((file, index) => this.salesOrders.attachSalesOrderFile(orderName, file).pipe(
-        catchError((error: unknown) => throwError(() => new Error(
-          `Could not upload "${file.name}": ${this.errorMessage(error)}${index > 0 ? ' Earlier files may already be attached to the Sales Order.' : ''}`,
-        ))),
-      )),
-      toArray(),
-      switchMap((uploadedFiles) => this.salesOrders.getSalesOrderAttachments(orderName).pipe(
-        map((orderFiles) => [...new Set([
-          ...orderFiles.map((file) => file.name),
-          ...uploadedFiles.map((file) => file.name),
-        ])]),
-        catchError((error: unknown) => throwError(() => new Error(
-          `Could not load the Sales Order's attachments: ${this.errorMessage(error)}`,
-        ))),
-      )),
-      switchMap((attachmentNames) => {
-        if (attachmentNames.length && recipients.length !== selectedUsers.length) {
+    this.salesOrders.getSalesOrderAttachments(orderName).pipe(
+      catchError((error: unknown) => throwError(() => new Error(
+        `Could not load the Sales Order's attachments: ${this.errorMessage(error)}`,
+      ))),
+      switchMap((orderFiles) => {
+        const hasAttachments = orderFiles.length > 0 || attachments.length > 0;
+        if (hasAttachments && recipients.length !== selectedUsers.length) {
           const usersWithoutEmail = selectedUsers
             .filter((user) => !user?.email?.trim())
             .map((user) => user?.full_name || user?.name || 'Unknown user');
@@ -604,34 +593,58 @@ export class App {
             `Add an email address in Frappe for: ${usersWithoutEmail.join(', ')}.`,
           ));
         }
-        return this.salesOrders.assignSalesOrder(orderName, assignment).pipe(
-        catchError((error: unknown) => throwError(() => new Error(
-          attachments.length
-            ? `Attachments were uploaded to the Sales Order, but the assignment could not be created: ${this.errorMessage(error)}`
-            : `Could not assign Sales Order: ${this.errorMessage(error)}`,
-        ))),
-        switchMap((response) => {
-          const duplicateMessage = this.duplicateAssignmentMessage(response);
-          if (duplicateMessage) {
-            return throwError(() => new Error(
-              `${duplicateMessage}${attachmentNames.length ? ' The Sales Order attachments were not emailed.' : ''}`,
-            ));
-          }
-          return attachmentNames.length
-            ? this.salesOrders.emailSalesOrderAssignment(
-              orderName,
-              recipients,
-              attachmentNames,
-              assignment.description,
-            ).pipe(
-              map(() => true),
+        const createAssignment = (sender: string) => from(attachments).pipe(
+          concatMap((file, index) => this.salesOrders.attachSalesOrderFile(orderName, file).pipe(
+            catchError((error: unknown) => throwError(() => new Error(
+              `Could not upload "${file.name}": ${this.errorMessage(error)}${index > 0 ? ' Earlier files may already be attached to the Sales Order.' : ''}`,
+            ))),
+          )),
+          toArray(),
+          switchMap((uploadedFiles) => {
+            const attachmentNames = [...new Set([
+              ...orderFiles.map((file) => file.name),
+              ...uploadedFiles.map((file) => file.name),
+            ])];
+            return this.salesOrders.assignSalesOrder(orderName, assignment).pipe(
               catchError((error: unknown) => throwError(() => new Error(
-                `The assignment was created and the Sales Order attachments were collected, but the email could not be queued: ${this.errorMessage(error)}`,
+                hasAttachments
+                  ? `Files are attached to the Sales Order, but the assignment could not be created: ${this.errorMessage(error)}`
+                  : `Could not assign Sales Order: ${this.errorMessage(error)}`,
               ))),
-            )
-            : of(false);
-        }),
-      );
+              switchMap((response) => {
+                const duplicateMessage = this.duplicateAssignmentMessage(response);
+                if (duplicateMessage) {
+                  return throwError(() => new Error(
+                    `${duplicateMessage}${attachmentNames.length ? ' The Sales Order attachments were not emailed.' : ''}`,
+                  ));
+                }
+                return attachmentNames.length
+                  ? this.salesOrders.emailSalesOrderAssignment(
+                    orderName,
+                    sender,
+                    recipients,
+                    attachmentNames,
+                    assignment.description,
+                  ).pipe(
+                    map(() => true),
+                    catchError((error: unknown) => throwError(() => new Error(
+                      `The assignment was created and the Sales Order attachments were collected, but the email could not be queued: ${this.errorMessage(error)}`,
+                    ))),
+                  )
+                  : of(false);
+              }),
+            );
+          }),
+        );
+
+        return hasAttachments
+          ? this.salesOrders.getDefaultOutgoingEmailSender().pipe(
+            catchError((error: unknown) => throwError(() => new Error(
+              `Could not load Frappe's default outgoing email sender: ${this.errorMessage(error)}`,
+            ))),
+            switchMap((sender) => createAssignment(sender)),
+          )
+          : createAssignment('');
       }),
       finalize(() => this.assignmentSaving.set(false)),
       takeUntilDestroyed(this.destroyRef),
