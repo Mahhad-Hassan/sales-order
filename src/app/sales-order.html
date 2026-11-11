@@ -544,6 +544,42 @@
                     (input)="updateAssignmentComment($event)"
                   ></textarea>
                 </label>
+
+                <div class="grid gap-2">
+                  <span class="form-field-label">Attachments</span>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <input
+                      #assignmentAttachmentInput
+                      class="sr-only"
+                      type="file"
+                      multiple
+                      [disabled]="assignmentSaving()"
+                      (change)="selectAssignmentAttachments($event)"
+                    />
+                    <button
+                      class="toolbar-back rounded-[10px] border px-4 py-2 text-sm font-semibold"
+                      type="button"
+                      [disabled]="assignmentSaving()"
+                      (click)="assignmentAttachmentInput.click()"
+                    >Attach files</button>
+                    @if (assignmentAttachments().length) {
+                      <span class="text-xs text-[#6d7d77]">{{ assignmentAttachments().length }} file(s) selected</span>
+                    }
+                  </div>
+                  @for (file of assignmentAttachments(); track file.name + file.size + file.lastModified) {
+                    <div class="flex items-center justify-between gap-3 rounded-lg border border-[#e3eae6] px-3 py-2 text-sm">
+                      <span class="min-w-0 break-all">{{ file.name }}</span>
+                      <button
+                        class="shrink-0 text-xs font-semibold text-[#8b3c2c] underline"
+                        type="button"
+                        [disabled]="assignmentSaving()"
+                        [attr.aria-label]="'Remove ' + file.name"
+                        (click)="removeAssignmentAttachment(file)"
+                      >Remove</button>
+                    </div>
+                  }
+                  <p class="m-0 text-xs text-[#6d7d77]">Selected files will be attached privately to this Sales Order when you add the assignment.</p>
+                </div>
               </div>
             }
 

@@ -167,6 +167,10 @@ export class FrappeSalesOrderService {
     });
   }
 
+  attachSalesOrderFile(name: string, file: File): Observable<unknown> {
+    return this.api.uploadFile(file, 'Sales Order', name);
+  }
+
   getItemUoms(itemCode: string): Observable<string[]> {
     return this.api.getDocument<{
       stock_uom?: string;

@@ -104,6 +104,22 @@ export class FrappeApiService {
     );
   }
 
+  uploadFile<T>(file: File, doctype: string, docname: string, isPrivate = true): Observable<T> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('doctype', doctype);
+    formData.append('docname', docname);
+    formData.append('is_private', isPrivate ? '1' : '0');
+
+    return this.request(() =>
+      this.http
+        .post<FrappeMethodResponse<T>>(this.methodUrl('upload_file'), formData, {
+          withCredentials: true,
+        })
+        .pipe(map((response) => response.message)),
+    );
+  }
+
   private methodUrl(method: string): string {
     return `${this.baseUrl}/api/method/${method}`;
   }

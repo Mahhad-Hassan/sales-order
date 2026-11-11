@@ -2,7 +2,7 @@ import { Component, DestroyRef, HostListener, computed, inject, signal } from '@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subject, catchError, debounceTime, finalize, forkJoin, map, of, switchMap, throwError, timeout, timer } from 'rxjs';
+import { Subject, catchError, concatMap, debounceTime, finalize, forkJoin, from, map, of, switchMap, throwError, timeout, timer, toArray } from 'rxjs';
 import { CustomerAddressOption, CustomerOption, EMPTY_CUSTOMER_PARTY } from './models/customer-option.model';
 import { calculatePaymentDueDate, formatDateForInput } from './models/payment-term-date';
 import {
@@ -152,6 +152,7 @@ export class App {
   protected readonly assignmentDate = signal('');
   protected readonly assignmentPriority = signal<'Low' | 'Medium' | 'High'>('Medium');
   protected readonly assignmentComment = signal('');
+  protected readonly assignmentAttachments = signal<File[]>([]);
   protected readonly paymentTermError = signal('');
   protected readonly itemPriceError = signal('');
   protected readonly itemUomError = signal('');
@@ -413,6 +414,7 @@ export class App {
     this.assignmentDate.set('');
     this.assignmentPriority.set('Medium');
     this.assignmentComment.set('');
+    this.assignmentAttachments.set([]);
     this.salesOrders.getAssignmentOptions().pipe(
       finalize(() => {
         if (requestId === this.assignmentOptionsRequest) {
@@ -443,6 +445,7 @@ export class App {
       this.assignmentGroupLoading.set(false);
       this.assignmentDialogOpen.set(false);
       this.assignmentError.set('');
+      this.assignmentAttachments.set([]);
     }
   }
 
@@ -524,6 +527,32 @@ export class App {
     this.assignmentComment.set((event.target as HTMLTextAreaElement).value);
   }
 
+  protected selectAssignmentAttachments(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const selectedFiles = Array.from(input.files ?? []);
+    this.assignmentAttachments.update((files) => {
+      const existing = new Set(files.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+      return [
+        ...files,
+        ...selectedFiles.filter((file) => {
+          const key = `${file.name}:${file.size}:${file.lastModified}`;
+          if (existing.has(key)) {
+            return false;
+          }
+          existing.add(key);
+          return true;
+        }),
+      ];
+    });
+    input.value = '';
+  }
+
+  protected removeAssignmentAttachment(fileToRemove: File): void {
+    this.assignmentAttachments.update((files) =>
+      files.filter((file) => file !== fileToRemove),
+    );
+  }
+
   protected submitAssignment(): void {
     if (!this.orderName || !this.isExistingOrder() || this.assignmentSaving()) {
       return;
@@ -535,21 +564,38 @@ export class App {
 
     this.assignmentSaving.set(true);
     this.assignmentError.set('');
-    this.salesOrders.assignSalesOrder(this.orderName, {
+    const orderName = this.orderName;
+    const assignment = {
       assignTo: this.assignedUserNames(),
       date: this.assignmentDate(),
       priority: this.assignmentPriority(),
       description: this.assignmentComment().trim(),
-    }).pipe(
+    };
+    const attachments = this.assignmentAttachments();
+    from(attachments).pipe(
+      concatMap((file, index) => this.salesOrders.attachSalesOrderFile(orderName, file).pipe(
+        catchError((error: unknown) => throwError(() => new Error(
+          `Could not upload "${file.name}": ${this.errorMessage(error)}${index > 0 ? ' Earlier files may already be attached to the Sales Order.' : ''}`,
+        ))),
+      )),
+      toArray(),
+      switchMap(() => this.salesOrders.assignSalesOrder(orderName, assignment).pipe(
+        catchError((error: unknown) => throwError(() => new Error(
+          attachments.length
+            ? `Attachments were uploaded to the Sales Order, but the assignment could not be created: ${this.errorMessage(error)}`
+            : `Could not assign Sales Order: ${this.errorMessage(error)}`,
+        ))),
+      )),
       finalize(() => this.assignmentSaving.set(false)),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => {
+        this.assignmentAttachments.set([]);
         this.assignmentDialogOpen.set(false);
-        this.orderMessage.set(`Sales Order ${this.orderName} assigned successfully.`);
+        this.orderMessage.set(`Sales Order ${orderName} assigned successfully.`);
       },
       error: (error: unknown) => {
-        this.assignmentError.set(`Could not assign Sales Order: ${this.errorMessage(error)}`);
+        this.assignmentError.set(this.errorMessage(error));
       },
     });
   }
