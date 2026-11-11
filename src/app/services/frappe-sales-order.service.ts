@@ -147,6 +147,15 @@ export class FrappeSalesOrderService {
     );
   }
 
+  getSalesOrderAttachments(name: string): Observable<Array<{ name: string; file_name: string }>> {
+    return this.api.getList<{ name: string; file_name: string }>(
+      'File',
+      ['name', 'file_name'],
+      [['attached_to_doctype', '=', 'Sales Order'], ['attached_to_name', '=', name]],
+      500,
+    );
+  }
+
   assignSalesOrder(
     name: string,
     assignment: {
