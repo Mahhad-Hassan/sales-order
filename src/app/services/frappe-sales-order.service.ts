@@ -45,7 +45,7 @@ export class FrappeSalesOrderService {
         [],
         500,
       ),
-      employees: this.getAllPages<EmployeeOption>('Employee', ['name', 'employee_name'], []),
+      employees: this.getAllPages<EmployeeOption>('Employee', ['name', 'employee_name', 'user_id'], []),
       incoterms: this.api.getList<IncotermOption>('Incoterm', ['name', 'title'], [], 500),
       items: this.api.getList<SalesOrderItemOption>(
         'Item',

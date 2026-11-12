@@ -1185,6 +1185,7 @@ export class App {
       next: (options) => {
         this.companies.set(options.companies);
         this.employees.set(options.employees);
+        this.setDefaultSalesRepForCurrentUser();
         this.incoterms.set(mergeUniqueByName(options.incoterms, this.incoterms()));
         this.orderItems.set(options.items);
         this.paymentTerms.set(mergeUniqueByName(options.paymentTerms, this.paymentTerms()));
@@ -1507,6 +1508,7 @@ export class App {
       billTo: EMPTY_CUSTOMER_PARTY,
       shipTo: EMPTY_CUSTOMER_PARTY,
     }, { emitEvent: false });
+    this.setDefaultSalesRepForCurrentUser();
     this.syncDateDisplays();
     this.orderForm.enable({ emitEvent: false });
     this.replaceItems([]);
@@ -1523,6 +1525,26 @@ export class App {
     this.orderError.set('');
     this.orderMessage.set('');
     this.selectDefaultCompanyAndPriceList();
+  }
+
+  private setDefaultSalesRepForCurrentUser(): void {
+    if (this.isExistingOrder()
+      || this.route.snapshot.paramMap.get('name')
+      || this.orderForm.controls.salesRep.value?.trim()) {
+      return;
+    }
+
+    const currentUser = this.auth.currentUser()?.trim().toLocaleLowerCase();
+    if (!currentUser) {
+      return;
+    }
+
+    const employee = this.employees().find((option) =>
+      option.user_id?.trim().toLocaleLowerCase() === currentUser,
+    );
+    if (employee) {
+      this.orderForm.controls.salesRep.setValue(employee.name, { emitEvent: false });
+    }
   }
 
   private selectDefaultCompanyAndPriceList(): void {

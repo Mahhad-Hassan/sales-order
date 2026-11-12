@@ -20,6 +20,7 @@ export interface CompanyOption {
 export interface EmployeeOption {
   name: string;
   employee_name?: string | null;
+  user_id?: string | null;
 }
 
 export interface AssignmentUserOption {
