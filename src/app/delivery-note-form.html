@@ -1,0 +1,192 @@
+<div class="sales-order-page min-h-screen">
+  <header class="sales-order-topbar relative flex min-h-[72px] items-center justify-between border-b px-[clamp(20px,5vw,76px)] max-[580px]:px-4">
+    <a class="sales-order-brand inline-flex items-center gap-3 no-underline" routerLink="/home" aria-label="Home">
+      <span class="sales-order-logo" aria-hidden="true">AV</span>
+      <span class="text-left">
+        <strong class="block text-[18px] font-extrabold leading-tight">AGROVISIONS</strong>
+        <small class="mt-1 block text-xs">Delivery Note Management</small>
+      </span>
+    </a>
+    <span class="text-sm font-semibold text-[#24765f] max-[580px]:hidden">{{ currentUser }}</span>
+  </header>
+
+  <section class="sales-order-hero px-[clamp(20px,5vw,76px)] pt-7 pb-[76px] text-white max-[700px]:px-4 max-[700px]:pt-6 max-[700px]:pb-[68px]">
+    <div class="mx-auto w-full max-w-[1200px]">
+      <p class="m-0 text-[13px] text-white/75"><a class="text-white/75 no-underline hover:text-white" routerLink="/home">Home</a><span class="px-1" aria-hidden="true">›</span><a class="text-white/75 no-underline hover:text-white" routerLink="/delivery-notes">Delivery Notes</a><span class="px-1" aria-hidden="true">›</span>{{ orderName() || 'New' }}</p>
+      <div class="mt-2 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 class="m-0 text-[clamp(28px,4vw,36px)] font-extrabold leading-tight">{{ orderName() || 'New Delivery Note' }}</h1>
+          <p class="mt-2 mb-0 text-sm text-white/80">Create and manage independent Delivery Notes.</p>
+        </div>
+        @if (orderName()) {
+          <span class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">{{ statusLabel() }}</span>
+        }
+      </div>
+    </div>
+  </section>
+
+  <main class="sales-order-content w-full px-4 pb-8 max-[580px]:px-3">
+    <section class="mx-auto -mt-12 w-full max-w-[1200px]">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e3eae6] bg-white p-4 shadow-sm">
+        <a class="toolbar-back inline-flex min-h-[42px] items-center rounded-[10px] border px-[13px] py-2 text-sm font-semibold no-underline" routerLink="/delivery-notes">← Back to Delivery Notes</a>
+        @if (orderName()) {
+          <span class="text-sm text-[#6d7d77]">Delivery Note {{ orderName() }}</span>
+        }
+      </div>
+
+      @if (optionsLoading() || loading()) {
+        <p class="rounded-xl border border-dashed bg-white p-5 text-center text-sm text-[#6d7d77]" role="status">
+          {{ optionsLoading() ? 'Loading Delivery Note fields and Frappe options...' : 'Loading Delivery Note...' }}
+        </p>
+      } @else {
+        <form class="grid gap-5" [formGroup]="form" (ngSubmit)="save(false)">
+          <section class="form-card" aria-label="Delivery Note details">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Delivery Note Details</h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="form-field sm:col-span-2 lg:col-span-1">
+                <span class="form-field-label">Customer *</span>
+                @if (!isReadOnly) {
+                  <input class="form-input mb-2" type="search" aria-label="Search customers" placeholder="Search customer..." [value]="customerSearch()" (input)="setCustomerSearch($event)" />
+                }
+                <select class="form-input" formControlName="customer" aria-label="Customer" [attr.aria-required]="true">
+                  <option value="">Select customer...</option>
+                  @for (customer of filteredCustomers(); track customer.name) {
+                    <option [value]="customer.name">{{ customer.customer_name || customer.name }} ({{ customer.name }})</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Date *</span>
+                <input class="form-input" type="date" formControlName="postingDate" />
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Company *</span>
+                <select class="form-input" [value]="form.controls.company.value" [disabled]="isReadOnly" (change)="setCompany($event)">
+                  <option value="">Select company...</option>
+                  @for (company of companies(); track company.name) {
+                    <option [value]="company.name">{{ company.name }} ({{ company.default_currency }})</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Price List *</span>
+                <select class="form-input" formControlName="priceList">
+                  <option value="">Select selling price list...</option>
+                  @for (priceList of priceLists(); track priceList.name) {
+                    <option [value]="priceList.name">{{ priceList.name }} ({{ priceList.currency }})</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Source Warehouse</span>
+                <select class="form-input" formControlName="warehouse">
+                  <option value="">Select source warehouse...</option>
+                  @for (warehouse of filteredWarehouses(); track warehouse.name) {
+                    <option [value]="warehouse.name">{{ warehouse.name }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card" aria-label="Delivery Note items">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Items</h2>
+            <div class="grid gap-3">
+              @for (row of itemRows(); track $index; let rowIndex = $index) {
+                <div class="grid grid-cols-1 items-end gap-3 rounded-xl border border-[#e3eae6] p-3 sm:grid-cols-[minmax(0,2fr)_minmax(90px,0.7fr)_minmax(110px,1fr)_minmax(110px,0.8fr)_auto]">
+                  <label class="form-field">
+                    <span class="form-field-label">Item *</span>
+                    <select class="form-input" [value]="row.item_code" [disabled]="isReadOnly" (change)="setItemField(rowIndex, 'item_code', $event)">
+                      <option value="">Select stock item...</option>
+                      @for (item of items(); track item.item_code) {
+                        <option [value]="item.item_code">{{ item.item_name }} ({{ item.item_code }})</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field-label">Quantity *</span>
+                    <input class="form-input" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setItemField(rowIndex, 'qty', $event)" />
+                  </label>
+                  <div class="form-field">
+                    <span class="form-field-label">UOM</span>
+                    <span class="form-input flex min-h-[44px] items-center">{{ selectedItem(row.item_code)?.stock_uom || '—' }}</span>
+                  </div>
+                  <label class="form-field">
+                    <span class="form-field-label">Rate</span>
+                    <input class="form-input" type="number" min="0" step="any" [value]="row.rate" [disabled]="isReadOnly" placeholder="Auto" (input)="setItemField(rowIndex, 'rate', $event)" />
+                  </label>
+                  @if (!isReadOnly) {
+                    <button class="remove-row-button min-h-[42px]" type="button" [disabled]="itemRows().length === 1" (click)="removeItem(rowIndex)">Remove</button>
+                  }
+                </div>
+                @if (row.item_code) {
+                  <p class="-mt-2 mb-0 px-3 text-xs text-[#6d7d77]">Item {{ row.item_code }} will be delivered from the selected warehouse.</p>
+                }
+              }
+            </div>
+            @if (!isReadOnly) {
+              <button class="add-row-button mt-3 w-full" type="button" (click)="addItem()"><span aria-hidden="true">+</span> Add Item</button>
+            }
+            <p class="mb-0 mt-3 text-xs text-[#6d7d77]">Items are standalone Delivery Note rows; they are not automatically linked to a Sales Order.</p>
+          </section>
+
+          <section class="form-card" aria-label="Transport and reference details">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Transport &amp; Reference</h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="form-field">
+                <span class="form-field-label">Transporter</span>
+                <select class="form-input" formControlName="transporter">
+                  <option value="">Select transporter...</option>
+                  @for (supplier of suppliers(); track supplier.name) {
+                    <option [value]="supplier.name">{{ supplier.supplier_name || supplier.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field"><span class="form-field-label">Transport Receipt No</span><input class="form-input" formControlName="lrNo" /></label>
+              <label class="form-field"><span class="form-field-label">Transport Receipt Date</span><input class="form-input" type="date" formControlName="lrDate" /></label>
+              <label class="form-field"><span class="form-field-label">Vehicle No</span><input class="form-input" formControlName="vehicleNo" /></label>
+              <label class="form-field">
+                <span class="form-field-label">Driver</span>
+                <select class="form-input" formControlName="driver">
+                  <option value="">Select driver...</option>
+                  @for (driver of drivers(); track driver.name) {
+                    <option [value]="driver.name">{{ driver.full_name || driver.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field"><span class="form-field-label">Driver Name</span><input class="form-input" formControlName="driverName" /></label>
+              <label class="form-field"><span class="form-field-label">Customer's Purchase Order No</span><input class="form-input" formControlName="poNo" /></label>
+              <label class="form-field"><span class="form-field-label">Customer's Purchase Order Date</span><input class="form-input" type="date" formControlName="poDate" /></label>
+            </div>
+            <label class="form-field mt-4">
+              <span class="form-field-label">Terms and Conditions</span>
+              <textarea class="form-input min-h-28 resize-y" rows="4" formControlName="terms" placeholder="Enter delivery terms and conditions..."></textarea>
+            </label>
+          </section>
+
+          @if (error()) {
+            <p class="m-0 rounded-lg border border-[#f1d4d0] bg-[#fff7f6] px-3 py-2 text-sm text-[#a34539]" role="alert">{{ error() }}</p>
+          }
+          @if (message()) {
+            <p class="m-0 rounded-lg border border-[#cce7db] bg-[#f3f9f6] px-3 py-2 text-sm text-[#24765f]" role="status">{{ message() }}</p>
+          }
+
+          <section class="form-card">
+            <div class="flex flex-wrap items-center justify-center gap-3">
+              <button class="toolbar-back min-h-11 rounded-[10px] border px-5 py-2 text-sm font-semibold" type="button" routerLink="/delivery-notes">Cancel</button>
+              @if (!isReadOnly) {
+                <button class="primary-action" type="submit" [disabled]="saving() || optionsLoading()">{{ saving() ? 'Saving...' : 'Save Draft' }}</button>
+                @if (orderName() && docstatus() === 0) {
+                  <button class="primary-action" type="button" [disabled]="saving()" (click)="save(true)">{{ saving() ? 'Submitting...' : 'Submit Delivery Note' }}</button>
+                }
+              }
+            </div>
+            @if (!isReadOnly && orderName()) {
+              <p class="mb-0 mt-3 text-center text-xs text-[#6d7d77]">Submitting runs Frappe's stock and permission validations.</p>
+            }
+          </section>
+        </form>
+      }
+    </section>
+  </main>
+</div>

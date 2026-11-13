@@ -1,0 +1,141 @@
+:host {
+  display: block;
+  color: #1c2b26;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+}
+
+.sales-order-page {
+  min-height: 100vh;
+  background: #f4f7f5;
+}
+
+.sales-order-topbar {
+  z-index: 1;
+  border-color: #e3eae6;
+  background: #fff;
+}
+
+.sales-order-brand {
+  color: #14332b;
+}
+
+.sales-order-brand small {
+  color: #6d7d77;
+}
+
+.sales-order-logo {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2d8a70, #14332b);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.sales-order-hero {
+  background: linear-gradient(120deg, #14332b, #24765f);
+}
+
+.sales-order-content {
+  position: relative;
+}
+
+.form-card {
+  border: 1px solid #e3eae6;
+  border-radius: 16px;
+  background: #fff;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgb(20 51 43 / 6%);
+}
+
+.form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  color: #14332b;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.form-section-title i {
+  width: 5px;
+  height: 20px;
+  border-radius: 4px;
+  background: #2d8a70;
+}
+
+.form-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: #344a42;
+  font-size: 13px;
+}
+
+.form-field-label {
+  color: #6d7d77;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.form-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #e3eae6;
+  border-radius: 10px;
+  background: #fbfdfc;
+  padding: 9px 11px;
+  color: #1c2b26;
+  font: inherit;
+}
+
+.form-input:focus {
+  border-color: #24765f;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(36 118 95 / 18%);
+}
+
+.form-input:disabled {
+  background: #f3f6f4;
+  color: #6d7d77;
+}
+
+.toolbar-back {
+  border-color: #b9dccf;
+  background: #e6f3ee;
+  color: #24765f;
+}
+
+.add-row-button,
+.primary-action {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: #24765f;
+  padding: 10px 18px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.primary-action:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.remove-row-button {
+  border: 1px solid #e8bdb7;
+  border-radius: 10px;
+  background: #fff7f6;
+  padding: 0 12px;
+  color: #a34539;
+  font-size: 13px;
+  font-weight: 700;
+}

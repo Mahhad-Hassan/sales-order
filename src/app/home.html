@@ -1,0 +1,38 @@
+<div class="workspace-home min-h-screen">
+  <header class="workspace-home-header relative flex min-h-[72px] items-center justify-between border-b px-[clamp(20px,5vw,76px)] max-[580px]:px-4">
+    <a class="workspace-home-brand inline-flex items-center gap-3 no-underline" routerLink="/home" aria-label="Home">
+      <span class="workspace-home-logo" aria-hidden="true">AV</span>
+      <span class="text-left">
+        <strong class="block text-[18px] font-extrabold leading-tight">AGROVISIONS</strong>
+        <small class="mt-1 block text-xs">Sales Order Management</small>
+      </span>
+    </a>
+    <div class="workspace-home-user flex items-center gap-3">
+      <span class="text-sm font-semibold max-[580px]:hidden">{{ currentUser }}</span>
+      <button class="workspace-home-signout rounded-[10px] border bg-white px-3 py-2 text-sm font-bold" type="button" (click)="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <section class="workspace-home-hero px-[clamp(20px,5vw,76px)] py-9 text-white max-[700px]:px-4">
+    <div class="mx-auto w-full max-w-[1200px]">
+      <p class="m-0 text-[13px] text-white/75">Home</p>
+      <h1 class="mt-2 mb-0 text-[clamp(28px,4vw,36px)] font-extrabold leading-tight">Operations</h1>
+      <p class="mt-2 mb-0 text-sm text-white/80">Choose a document workspace to continue.</p>
+    </div>
+  </section>
+
+  <main class="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-5 px-4 py-8 sm:grid-cols-2 max-[580px]:px-3">
+    <a class="workspace-card group rounded-2xl border bg-white p-6 no-underline transition hover:-translate-y-1" routerLink="/sales-orders">
+      <span class="workspace-card-icon" aria-hidden="true">SO</span>
+      <h2 class="mt-5 mb-2 text-xl font-extrabold">Sales Orders</h2>
+      <p class="m-0 text-sm leading-6">Create, review, and manage Sales Orders.</p>
+      <span class="workspace-card-link mt-5 inline-flex items-center gap-2 text-sm font-bold">Open Sales Orders <span aria-hidden="true">→</span></span>
+    </a>
+    <a class="workspace-card group rounded-2xl border bg-white p-6 no-underline transition hover:-translate-y-1" routerLink="/delivery-notes">
+      <span class="workspace-card-icon workspace-card-icon-blue" aria-hidden="true">DN</span>
+      <h2 class="mt-5 mb-2 text-xl font-extrabold">Delivery Notes</h2>
+      <p class="m-0 text-sm leading-6">Create, review, and manage Delivery Notes.</p>
+      <span class="workspace-card-link mt-5 inline-flex items-center gap-2 text-sm font-bold">Open Delivery Notes <span aria-hidden="true">→</span></span>
+    </a>
+  </main>
+</div>

@@ -1,0 +1,89 @@
+<div class="sales-order-list-page min-h-screen">
+  <header class="sales-order-list-topbar relative flex min-h-[72px] items-center justify-between border-b px-[clamp(20px,5vw,76px)] max-[580px]:px-4">
+    <a class="sales-order-list-brand inline-flex items-center gap-3 no-underline" routerLink="/home" aria-label="Home">
+      <span class="sales-order-list-logo" aria-hidden="true">AV</span>
+      <span class="text-left">
+        <strong class="block text-[18px] font-extrabold leading-tight">AGROVISIONS</strong>
+        <small class="mt-1 block text-xs">Delivery Note Management</small>
+      </span>
+    </a>
+    @if (currentUser) {
+      <span class="text-sm font-semibold text-[#24765f] max-[580px]:hidden">{{ currentUser }}</span>
+    }
+  </header>
+
+  <section class="sales-order-list-hero px-[clamp(20px,5vw,76px)] pt-7 pb-[68px] text-white max-[700px]:px-4">
+    <div class="mx-auto w-full max-w-[1440px]">
+      <p class="m-0 text-[13px] text-white/75"><a class="text-white/75 no-underline hover:text-white" routerLink="/home">Home</a> <span class="px-1" aria-hidden="true">›</span> Delivery Notes</p>
+      <h1 class="mt-2 mb-0 text-[clamp(28px,4vw,36px)] font-extrabold leading-tight">Delivery Notes</h1>
+      <p class="mt-2 mb-0 text-sm text-white/80">Create and manage Delivery Notes in Frappe.</p>
+    </div>
+  </section>
+
+  <main class="sales-order-list-content w-full px-4 pb-8 max-[580px]:px-3">
+    <section class="sales-order-records-card mx-auto -mt-10 w-full max-w-[1440px] rounded-2xl border p-6 max-[580px]:p-4" aria-labelledby="delivery-note-records-title">
+      <div class="sales-order-records-heading mb-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <h2 class="m-0 text-xl font-extrabold" id="delivery-note-records-title">Delivery Note Records</h2>
+          <p class="record-count m-0 rounded-full px-3 py-1 text-xs font-bold" aria-live="polite">{{ filteredRecords().length }} record(s)</p>
+        </div>
+        <a class="new-sales-order-button inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white no-underline" routerLink="/delivery-note/new"><span aria-hidden="true">+</span>New Delivery Note</a>
+      </div>
+
+      <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <label class="sales-order-search-field flex w-full max-w-[520px] flex-col gap-[6px]" for="delivery-note-search">
+          <span>Search Delivery Notes</span>
+          <input
+            class="sales-order-search-input min-h-11 w-full rounded-xl border px-3 text-base outline-none"
+            id="delivery-note-search"
+            type="search"
+            [value]="searchText()"
+            placeholder="Search by note ID, customer, company, date, or status"
+            (input)="setSearchText($event)"
+          />
+        </label>
+        <button class="refresh-button inline-flex min-h-11 items-center gap-2 rounded-xl border px-[14px] py-2 text-sm font-semibold disabled:opacity-60" type="button" [disabled]="loading()" (click)="loadRecords()">
+          <span aria-hidden="true">↻</span>{{ loading() ? 'Refreshing...' : 'Refresh list' }}
+        </button>
+      </div>
+
+      @if (error()) {
+        <div class="sales-order-list-error mt-3 rounded-xl border px-3 py-[10px] text-base leading-[1.7]" role="alert">
+          <p class="m-0">{{ error() }}</p>
+          <button class="try-again-button mt-2 rounded-lg border bg-white px-3 py-1 font-bold" type="button" (click)="loadRecords()">Try again</button>
+        </div>
+      }
+
+      @if (loading() && records().length === 0) {
+        <p class="sales-order-list-notice rounded-xl border border-dashed px-3 py-[18px] text-center" role="status">Loading Delivery Notes...</p>
+      } @else if (filteredRecords().length) {
+        <div class="grid gap-2" role="table" aria-label="Delivery Note records">
+          <div class="hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] gap-3 px-3 text-xs font-bold uppercase tracking-wide text-[#81928a] md:grid" role="row">
+            <span role="columnheader">Delivery Note</span><span role="columnheader">Customer</span><span role="columnheader">Company</span><span role="columnheader">Date</span><span class="text-right" role="columnheader">Quantity</span><span class="text-right" role="columnheader">Grand Total</span>
+          </div>
+          @for (record of paginatedRecords(); track record.name) {
+            <button class="sales-order-list-item grid w-full grid-cols-2 gap-3 rounded-[14px] border bg-white px-4 py-3 text-left md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]" type="button" (click)="openRecord(record.name)" role="row">
+              <span class="sales-order-record-id min-w-0 break-words text-sm font-bold" role="cell"><small class="mobile-record-label">Delivery Note</small>{{ record.name }}<span class="mt-1 block text-xs font-medium text-[#6d7d77]">{{ status(record) }}</span></span>
+              <span class="min-w-0 break-words text-sm font-semibold text-[#344a42]" role="cell"><small class="mobile-record-label">Customer</small>{{ record.customer_name || record.customer }}</span>
+              <span class="min-w-0 break-words text-sm text-[#344a42]" role="cell"><small class="mobile-record-label">Company</small>{{ record.company }}</span>
+              <span class="text-sm text-[#344a42]" role="cell"><small class="mobile-record-label">Date</small>{{ record.posting_date || '—' }}</span>
+              <span class="text-sm text-[#344a42] md:text-right" role="cell"><small class="mobile-record-label">Quantity</small>{{ record.total_qty ?? '—' }}</span>
+              <span class="text-sm font-bold text-[#14332b] md:text-right" role="cell"><small class="mobile-record-label">Grand Total</small>{{ formatAmount(record) }}</span>
+            </button>
+          }
+        </div>
+        @if (pageCount() > 1) {
+          <nav class="mt-4 flex items-center justify-between gap-3" aria-label="Delivery Note pages">
+            <p class="m-0 text-sm text-[#6d7d77]">Page {{ currentPage() }} of {{ pageCount() }}</p>
+            <div class="flex gap-2">
+              <button class="refresh-button min-h-10 rounded-lg border px-3 text-sm font-semibold disabled:opacity-50" type="button" [disabled]="currentPage() === 1" (click)="previousPage()">Previous</button>
+              <button class="refresh-button min-h-10 rounded-lg border px-3 text-sm font-semibold disabled:opacity-50" type="button" [disabled]="currentPage() === pageCount()" (click)="nextPage()">Next</button>
+            </div>
+          </nav>
+        }
+      } @else {
+        <p class="sales-order-list-notice rounded-xl border border-dashed px-3 py-[18px] text-center" role="status">{{ searchText().trim() ? 'No Delivery Notes match your search.' : 'No Delivery Notes found.' }}</p>
+      }
+    </section>
+  </main>
+</div>
