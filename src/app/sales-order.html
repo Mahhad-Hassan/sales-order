@@ -844,7 +844,7 @@
               type="button"
               [disabled]="savingOrder() || optionsLoading() || orderLoading()"
               (click)="saveOrder()"
-            >{{ savingOrder() ? 'Saving...' : isExistingOrder() ? 'Update Sales Order' : 'Save Sales Order' }}</button>
+            >{{ savingOrder() ? 'Saving...' : isExistingOrder() ? 'Update Sales Order' : 'Submit Sales Order' }}</button>
           }
           @if (isExistingOrder() && !canUpdateOrder() && !orderLoading()) {
             <p class="m-0 w-full text-sm text-[#8b3c2c]" role="status">
