@@ -814,13 +814,6 @@
     }
     <section class="form-card order-footer-card">
       <div class="order-actions">
-          @if (orderDocstatus() === 1) {
-          <button
-            class="secondary-action"
-            type="button"
-            (click)="printOrder()"
-          >Print</button>
-          }
           @if (isExistingOrder() && salesOrderWorkflowActive()) {
             @if (workflowTransitionsLoading()) {
               <p class="m-0 text-sm text-[#6d7d77]" role="status">Loading workflow actions...</p>

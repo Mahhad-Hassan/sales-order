@@ -958,12 +958,6 @@ export class App {
     });
   }
 
-  protected printOrder(): void {
-    if (this.orderDocstatus() === 1 && this.orderName) {
-      void this.router.navigate(['/sales-order', this.orderName, 'print']);
-    }
-  }
-
   private persistOrder(submitAfterSave: boolean): void {
     if (this.savingOrder() || this.optionsLoading()) {
       return;
