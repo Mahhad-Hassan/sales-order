@@ -49,17 +49,34 @@
             />
           </span>
         </label>
-        <div class="sales-order-list-actions flex shrink-0 flex-wrap justify-end gap-2 max-[700px]:justify-start">
-          <button
-            class="refresh-button inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-[14px] py-2 text-sm font-semibold disabled:cursor-wait disabled:opacity-[0.65]"
-            type="button"
-            [disabled]="loading()"
-            (click)="loadOrders()"
-          ><span aria-hidden="true">↻</span>{{ loading() ? 'Refreshing...' : 'Refresh list' }}</button>
-          <a
-            class="new-sales-order-button inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border-0 px-4 py-2 text-sm font-bold text-white no-underline"
-            routerLink="/sales-order/new"
-          ><span aria-hidden="true">+</span>New Sales Order</a>
+        <div class="flex w-full flex-wrap items-end justify-end gap-3 max-[700px]:justify-start">
+          <label class="flex min-w-[170px] flex-col gap-[6px] text-sm font-medium" for="sales-order-status-filter">
+            <span>Filter by status</span>
+            <select
+              class="sales-order-search-input min-h-11 w-full rounded-xl border px-3 text-base font-normal outline-none"
+              id="sales-order-status-filter"
+              [value]="statusFilter()"
+              (change)="setStatusFilter($event)"
+            >
+              <option value="all">All statuses</option>
+              <option value="draft">Draft</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="pending">Pending</option>
+            </select>
+          </label>
+          <div class="sales-order-list-actions flex shrink-0 flex-wrap justify-end gap-2 max-[700px]:justify-start">
+            <button
+              class="refresh-button inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-[14px] py-2 text-sm font-semibold disabled:cursor-wait disabled:opacity-[0.65]"
+              type="button"
+              [disabled]="loading()"
+              (click)="loadOrders()"
+            ><span aria-hidden="true">↻</span>{{ loading() ? 'Refreshing...' : 'Refresh list' }}</button>
+            <a
+              class="new-sales-order-button inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border-0 px-4 py-2 text-sm font-bold text-white no-underline"
+              routerLink="/sales-order/new"
+            ><span aria-hidden="true">+</span>New Sales Order</a>
+          </div>
         </div>
       </div>
 
@@ -155,7 +172,7 @@
         }
       } @else {
         <p class="sales-order-list-notice my-0 rounded-xl border border-dashed px-3 py-[18px] text-center text-base" role="status">
-          {{ searchText().trim() ? 'No Sales Orders match your search.' : 'No Sales Orders found.' }}
+          {{ searchText().trim() || statusFilter() !== 'all' ? 'No Sales Orders match the selected search and status.' : 'No Sales Orders found.' }}
         </p>
       }
     </section>

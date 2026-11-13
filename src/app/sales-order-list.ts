@@ -22,27 +22,40 @@ export class SalesOrderListPage {
   protected readonly orders = signal<SalesOrderListOption[]>([]);
   protected readonly workflowStateStyles = signal<Record<string, string>>({});
   protected readonly searchText = signal('');
+  protected readonly statusFilter = signal<'all' | 'draft' | 'approved' | 'rejected' | 'pending'>('all');
   protected readonly currentPage = signal(1);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
   protected readonly filteredOrders = computed(() => {
     const query = this.searchText().trim().toLocaleLowerCase();
-    if (!query) {
-      return this.orders();
-    }
-
-    return this.orders().filter((order) => [
-      order.name,
-      order.customer,
-      order.customer_name,
-      order.transaction_date,
-      order.delivery_date,
-      order.salesOrderStatus,
-      order.status,
-      order.deliveryNoteStatus,
-      order.salesInvoiceStatus,
-      order.total === undefined ? '' : String(order.total),
-    ].some((value) => value?.toLocaleLowerCase().includes(query)));
+    const statusFilter = this.statusFilter();
+    return this.orders().filter((order) => {
+      const matchesStatus = statusFilter === 'all'
+        || this.statusValues(this.orderStatus(order)).some((status) => {
+          const normalized = status.toLocaleLowerCase();
+          return statusFilter === 'pending'
+            ? normalized === 'pending' || normalized.startsWith('pending ')
+            : normalized === statusFilter;
+        });
+      if (!matchesStatus) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return [
+        order.name,
+        order.customer,
+        order.customer_name,
+        order.transaction_date,
+        order.delivery_date,
+        order.salesOrderStatus,
+        order.status,
+        order.deliveryNoteStatus,
+        order.salesInvoiceStatus,
+        order.total === undefined ? '' : String(order.total),
+      ].some((value) => value?.toLocaleLowerCase().includes(query));
+    });
   });
   protected readonly pageCount = computed(() =>
     Math.max(1, Math.ceil(this.filteredOrders().length / this.pageSize)),
@@ -103,6 +116,15 @@ export class SalesOrderListPage {
   protected setSearchText(event: Event): void {
     this.searchText.set((event.target as HTMLInputElement).value);
     this.currentPage.set(1);
+  }
+
+  protected setStatusFilter(event: Event): void {
+    const filter = (event.target as HTMLSelectElement).value;
+    if (filter === 'all' || filter === 'draft' || filter === 'approved'
+      || filter === 'rejected' || filter === 'pending') {
+      this.statusFilter.set(filter);
+      this.currentPage.set(1);
+    }
   }
 
   protected goToPreviousPage(): void {
