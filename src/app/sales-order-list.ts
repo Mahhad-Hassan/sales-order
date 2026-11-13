@@ -23,6 +23,7 @@ export class SalesOrderListPage {
   protected readonly workflowStateStyles = signal<Record<string, string>>({});
   protected readonly searchText = signal('');
   protected readonly statusFilter = signal<'all' | 'draft' | 'approved' | 'rejected' | 'pending'>('all');
+  protected readonly datePeriodFilter = signal<'all' | 'week' | 'month' | 'year'>('all');
   protected readonly currentPage = signal(1);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -37,7 +38,7 @@ export class SalesOrderListPage {
             ? normalized === 'pending' || normalized.startsWith('pending ')
             : normalized === statusFilter;
         });
-      if (!matchesStatus) {
+      if (!matchesStatus || !this.matchesDatePeriod(order.transaction_date)) {
         return false;
       }
       if (!query) {
@@ -125,6 +126,50 @@ export class SalesOrderListPage {
       this.statusFilter.set(filter);
       this.currentPage.set(1);
     }
+  }
+
+  protected setDatePeriodFilter(event: Event): void {
+    const filter = (event.target as HTMLSelectElement).value;
+    if (filter === 'all' || filter === 'week' || filter === 'month' || filter === 'year') {
+      this.datePeriodFilter.set(filter);
+      this.currentPage.set(1);
+    }
+  }
+
+  private matchesDatePeriod(transactionDate: string | undefined): boolean {
+    const period = this.datePeriodFilter();
+    if (period === 'all') {
+      return true;
+    }
+
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(transactionDate ?? '');
+    if (!match) {
+      return false;
+    }
+
+    const [, yearText, monthText, dayText] = match;
+    const year = Number(yearText);
+    const month = Number(monthText) - 1;
+    const day = Number(dayText);
+    const orderDate = new Date(year, month, day);
+    if (orderDate.getFullYear() !== year || orderDate.getMonth() !== month || orderDate.getDate() !== day) {
+      return false;
+    }
+
+    const today = new Date();
+    if (period === 'year') {
+      return year === today.getFullYear();
+    }
+    if (period === 'month') {
+      return year === today.getFullYear() && month === today.getMonth();
+    }
+
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const daysSinceMonday = (weekStart.getDay() + 6) % 7;
+    weekStart.setDate(weekStart.getDate() - daysSinceMonday);
+    const nextWeekStart = new Date(weekStart);
+    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+    return orderDate >= weekStart && orderDate < nextWeekStart;
   }
 
   protected goToPreviousPage(): void {

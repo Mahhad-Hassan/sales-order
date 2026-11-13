@@ -50,8 +50,8 @@
           </span>
         </label>
         <div class="flex w-full flex-wrap items-end justify-end gap-3 max-[700px]:justify-start">
-          <label class="flex min-w-[170px] flex-col gap-[6px] text-sm font-medium" for="sales-order-status-filter">
-            <span>Filter by status</span>
+          <label class="flex min-w-[150px] flex-col gap-[6px] text-sm font-medium" for="sales-order-status-filter">
+            <span>Status</span>
             <select
               class="sales-order-search-input min-h-11 w-full rounded-xl border px-3 text-base font-normal outline-none"
               id="sales-order-status-filter"
@@ -63,6 +63,20 @@
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
               <option value="pending">Pending</option>
+            </select>
+          </label>
+          <label class="flex min-w-[150px] flex-col gap-[6px] text-sm font-medium" for="sales-order-date-period-filter">
+            <span>Order date</span>
+            <select
+              class="sales-order-search-input min-h-11 w-full rounded-xl border px-3 text-base font-normal outline-none"
+              id="sales-order-date-period-filter"
+              [value]="datePeriodFilter()"
+              (change)="setDatePeriodFilter($event)"
+            >
+              <option value="all">Any time</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="year">This year</option>
             </select>
           </label>
           <div class="sales-order-list-actions flex shrink-0 flex-wrap justify-end gap-2 max-[700px]:justify-start">
@@ -172,7 +186,7 @@
         }
       } @else {
         <p class="sales-order-list-notice my-0 rounded-xl border border-dashed px-3 py-[18px] text-center text-base" role="status">
-          {{ searchText().trim() || statusFilter() !== 'all' ? 'No Sales Orders match the selected search and status.' : 'No Sales Orders found.' }}
+          {{ searchText().trim() || statusFilter() !== 'all' || datePeriodFilter() !== 'all' ? 'No Sales Orders match the selected filters.' : 'No Sales Orders found.' }}
         </p>
       }
     </section>
