@@ -204,18 +204,23 @@ export class DeliveryNoteFormPage {
         updated.uomError = '';
         updated.conversion_factor = 1;
         updated.rate = '';
+        updated.amount = '';
         updated.rateError = '';
         updated.rateLoading = Boolean(value);
       } else if (field === 'uom') {
         const selectedUom = row.uomOptions.find((option) => option.uom === value);
         updated.conversion_factor = selectedUom?.conversion_factor ?? 1;
         updated.rate = '';
+        updated.amount = '';
         updated.rateLoading = Boolean(value);
         updated.rateError = '';
         updated.uomError = '';
       } else if (field === 'rate') {
         updated.rateLoading = false;
         updated.rateError = '';
+        updated.amount = this.calculateItemAmount(updated.qty, value);
+      } else if (field === 'qty') {
+        updated.amount = this.calculateItemAmount(value, updated.rate);
       }
       return updated;
     }));
@@ -287,7 +292,8 @@ export class DeliveryNoteFormPage {
         stock_uom: item.stock_uom,
         conversion_factor: row.conversion_factor,
         warehouse: row.warehouse || this.form.controls.warehouse.value || null,
-        ...(rate === undefined ? {} : { rate }),
+        rate,
+        amount: quantity * rate,
       });
     }
     if (!validRows.length) {
@@ -413,6 +419,9 @@ export class DeliveryNoteFormPage {
           qty: String(item.qty ?? ''),
           warehouse: item.warehouse ?? '',
           rate: item.rate === undefined ? '' : String(item.rate),
+          amount: item.amount === undefined
+            ? this.calculateItemAmount(String(item.qty ?? ''), item.rate === undefined ? '' : String(item.rate))
+            : String(item.amount),
           rateLoading: false,
           rateError: '',
         })));
@@ -505,6 +514,7 @@ export class DeliveryNoteFormPage {
           return {
             ...row,
             rate: rate === null ? row.rate : String(rate),
+            amount: rate === null ? row.amount : this.calculateItemAmount(row.qty, String(rate)),
             rateLoading: false,
             rateError: rate === null
               ? `No Standard Selling Item Price found for ${itemCode}. Enter a rate manually.`
@@ -609,9 +619,19 @@ export class DeliveryNoteFormPage {
       qty: '',
       warehouse: '',
       rate: '',
+      amount: '',
       rateLoading: false,
       rateError: '',
     };
+  }
+
+  private calculateItemAmount(quantity: string, rate: string): string {
+    const parsedQuantity = Number(quantity);
+    const parsedRate = Number(rate);
+    if (!quantity.trim() || !rate.trim() || !Number.isFinite(parsedQuantity) || !Number.isFinite(parsedRate)) {
+      return '';
+    }
+    return String(parsedQuantity * parsedRate);
   }
 
   private today(): string {

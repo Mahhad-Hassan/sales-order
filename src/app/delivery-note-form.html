@@ -91,7 +91,7 @@
             <h2 class="form-section-title"><i aria-hidden="true"></i>Items</h2>
             <div class="grid gap-3">
               @for (row of itemRows(); track row.rowId; let rowIndex = $index) {
-                <div class="grid grid-cols-1 items-end gap-3 rounded-xl border border-[#e3eae6] p-3 sm:grid-cols-[minmax(0,2fr)_minmax(90px,0.7fr)_minmax(110px,1fr)_minmax(110px,0.8fr)_auto]">
+                <div class="grid grid-cols-1 items-end gap-3 rounded-xl border border-[#e3eae6] p-3 sm:grid-cols-[minmax(0,2fr)_minmax(90px,0.7fr)_minmax(110px,1fr)_minmax(110px,0.8fr)_minmax(120px,0.9fr)_auto]">
                   <label class="form-field">
                     <span class="form-field-label">Item *</span>
                     <select class="form-input" [value]="row.item_code" [disabled]="isReadOnly" (change)="setItemField(rowIndex, 'item_code', $event)">
@@ -120,6 +120,10 @@
                     <span class="form-field-label">Rate</span>
                     <input class="form-input" type="number" min="0" step="any" [value]="row.rate" [disabled]="isReadOnly" [placeholder]="row.rateLoading ? 'Loading...' : 'Auto'" (input)="setItemField(rowIndex, 'rate', $event)" />
                   </label>
+                  <div class="form-field">
+                    <span class="form-field-label">Total</span>
+                    <output class="form-input flex min-h-[44px] items-center">{{ row.amount || '—' }}</output>
+                  </div>
                   @if (!isReadOnly) {
                     <button class="remove-row-button min-h-[42px]" type="button" [disabled]="itemRows().length === 1" (click)="removeItem(rowIndex)">Remove</button>
                   }

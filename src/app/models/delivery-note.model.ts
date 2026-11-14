@@ -101,6 +101,7 @@ export interface DeliveryNoteDraftItem {
   qty: string;
   warehouse: string;
   rate: string;
+  amount: string;
   rateLoading: boolean;
   rateError: string;
 }
