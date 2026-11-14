@@ -142,6 +142,12 @@
             @if (!isReadOnly) {
               <button class="add-row-button mt-3 w-full" type="button" (click)="addItem()"><span aria-hidden="true">+</span> Add Item</button>
             }
+            <div class="mt-4 flex justify-start">
+              <div class="order-total-summary">
+                <span class="order-total-label">TOTAL INCLUDING TAX</span>
+                <output class="order-total-input" aria-label="Total balance">{{ totalBalance() }}</output>
+              </div>
+            </div>
             <p class="mb-0 mt-3 text-xs text-[#6d7d77]">Items are standalone Delivery Note rows; they are not automatically linked to a Sales Order.</p>
           </section>
 

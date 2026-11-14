@@ -63,6 +63,10 @@ export class DeliveryNoteFormPage {
     const company = this.selectedCompany();
     return this.warehouses().filter((warehouse) => warehouse.company === company);
   });
+  protected readonly totalBalance = computed(() => this.itemRows().reduce((total, row) => {
+    const amount = Number(row.amount);
+    return Number.isFinite(amount) ? total + amount : total;
+  }, 0));
   protected readonly form = this.formBuilder.nonNullable.group({
     customer: ['', Validators.required],
     postingDate: [this.today(), Validators.required],
