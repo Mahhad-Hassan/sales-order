@@ -31,6 +31,8 @@ export class DeliveryNoteFormPage {
   private optionsLoaded = false;
   private requestedName = '';
   private namingSeries = '';
+  private nextItemRowId = 0;
+  private readonly itemPriceRequestIds = new Map<number, number>();
 
   protected readonly companies = signal<DeliveryNoteCompany[]>([]);
   protected readonly customers = signal<Array<{ name: string; customer_name?: string | null }>>([]);
@@ -179,6 +181,13 @@ export class DeliveryNoteFormPage {
 
   protected setItemField(index: number, field: 'item_code' | 'qty' | 'warehouse' | 'rate', event: Event): void {
     const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
+    const row = this.itemRows()[index];
+    if (!row) {
+      return;
+    }
+    if (field === 'rate') {
+      this.itemPriceRequestIds.set(row.rowId, (this.itemPriceRequestIds.get(row.rowId) ?? 0) + 1);
+    }
     this.itemRows.update((rows) => rows.map((row, rowIndex) => {
       if (rowIndex !== index) {
         return row;
@@ -186,10 +195,19 @@ export class DeliveryNoteFormPage {
       const updated = { ...row, [field]: value };
       if (field === 'item_code') {
         updated.warehouse = updated.warehouse || this.form.controls.warehouse.value;
+        updated.rate = '';
+        updated.rateError = '';
+        updated.rateLoading = Boolean(value);
+      } else if (field === 'rate') {
+        updated.rateLoading = false;
+        updated.rateError = '';
       }
       return updated;
     }));
     this.form.markAsDirty();
+    if (field === 'item_code' && value) {
+      this.fetchItemPrice(row.rowId, value);
+    }
   }
 
   protected selectedItem(itemCode: string): DeliveryNoteItemOption | undefined {
@@ -230,9 +248,13 @@ export class DeliveryNoteFormPage {
       const quantity = Number(row.qty);
       const rateText = row.rate.trim();
       const rate = rateText ? Number(rateText) : undefined;
+      if (row.rateLoading) {
+        this.error.set(`Wait for the Item Price to load on item row ${index + 1}.`);
+        return;
+      }
       if (!item || !Number.isFinite(quantity) || quantity <= 0
-        || (rateText && (!Number.isFinite(rate) || Number(rate) < 0))) {
-        this.error.set(`Enter a valid stock item and positive quantity on item row ${index + 1}; rate must be zero or greater.`);
+        || rate === undefined || !Number.isFinite(rate) || rate < 0) {
+        this.error.set(`Enter a valid stock item, positive quantity, and rate on item row ${index + 1}; rate must be zero or greater.`);
         return;
       }
       validRows.push({
@@ -359,10 +381,13 @@ export class DeliveryNoteFormPage {
         }
         this.form.controls.driver.setValue(record.driver ?? '', { emitEvent: false });
         this.itemRows.set((record.items ?? []).map((item) => ({
+          rowId: this.nextItemRowId++,
           item_code: item.item_code,
           qty: String(item.qty ?? ''),
           warehouse: item.warehouse ?? '',
           rate: item.rate === undefined ? '' : String(item.rate),
+          rateLoading: false,
+          rateError: '',
         })));
         if (!this.itemRows().length) {
           this.itemRows.set([this.emptyItem()]);
@@ -423,8 +448,63 @@ export class DeliveryNoteFormPage {
     return this.priceLists().find((priceList) => priceList.name === 'Standard Selling');
   }
 
+  private fetchItemPrice(rowId: number, itemCode: string): void {
+    const requestId = (this.itemPriceRequestIds.get(rowId) ?? 0) + 1;
+    this.itemPriceRequestIds.set(rowId, requestId);
+    const item = this.selectedItem(itemCode);
+    if (!item) {
+      return;
+    }
+
+    this.deliveryNotes.getItemPriceRate(
+      itemCode,
+      'Standard Selling',
+      item.stock_uom,
+      this.form.controls.postingDate.value,
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (rate) => {
+        if (this.itemPriceRequestIds.get(rowId) !== requestId) {
+          return;
+        }
+        this.itemRows.update((rows) => rows.map((row) => {
+          if (row.rowId !== rowId || row.item_code !== itemCode) {
+            return row;
+          }
+          return {
+            ...row,
+            rate: rate === null ? row.rate : String(rate),
+            rateLoading: false,
+            rateError: rate === null
+              ? `No Standard Selling Item Price found for ${itemCode}. Enter a rate manually.`
+              : '',
+          };
+        }));
+      },
+      error: (error: unknown) => {
+        if (this.itemPriceRequestIds.get(rowId) !== requestId) {
+          return;
+        }
+        this.itemRows.update((rows) => rows.map((row) => row.rowId === rowId
+          ? {
+            ...row,
+            rateLoading: false,
+            rateError: `Could not fetch the Item Price for ${itemCode}: ${this.errorMessage(error)} Enter a rate manually.`,
+          }
+          : row));
+      },
+    });
+  }
+
   private emptyItem(): DeliveryNoteDraftItem {
-    return { item_code: '', qty: '', warehouse: '', rate: '' };
+    return {
+      rowId: this.nextItemRowId++,
+      item_code: '',
+      qty: '',
+      warehouse: '',
+      rate: '',
+      rateLoading: false,
+      rateError: '',
+    };
   }
 
   private today(): string {

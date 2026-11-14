@@ -4,6 +4,7 @@ import { FrappeDocTypeMetadata } from '../models/frappe-api.model';
 import {
   DeliveryNoteCompany,
   DeliveryNoteCustomer,
+  DeliveryNoteItemPrice,
   DeliveryNoteItemOption,
   DeliveryNotePartyOption,
   DeliveryNotePriceList,
@@ -91,6 +92,35 @@ export class FrappeDeliveryNoteService {
     return this.api.callMethod<DeliveryNoteRecord>('frappe.client.submit', {
       doc: JSON.stringify(order),
     });
+  }
+
+  getItemPriceRate(itemCode: string, priceList: string, unit: string, date: string): Observable<number | null> {
+    return this.getAllPages<DeliveryNoteItemPrice>(
+      'Item Price',
+      ['name', 'item_code', 'price_list', 'price_list_rate', 'uom', 'valid_from', 'valid_upto', 'selling'],
+      [['item_code', '=', itemCode], ['price_list', '=', priceList], ['selling', '=', 1]],
+    ).pipe(
+      map((prices) => {
+        const availablePrices = prices.filter((price) =>
+          price.item_code === itemCode
+          && price.price_list === priceList
+          && price.selling === 1
+          && Number.isFinite(price.price_list_rate)
+          && price.price_list_rate >= 0,
+        );
+        const matchingUnit = availablePrices.filter((price) => price.uom === unit);
+        const defaultUnit = availablePrices.filter((price) => !price.uom);
+        const candidates = [...matchingUnit, ...defaultUnit];
+        const dateValidPrices = candidates.filter((price) =>
+          (!price.valid_from || price.valid_from <= date)
+          && (!price.valid_upto || price.valid_upto >= date),
+        );
+        const newestPrice = (options: DeliveryNoteItemPrice[]) => options
+          .sort((left, right) => (right.valid_from ?? '').localeCompare(left.valid_from ?? ''))[0];
+        const selectedPrice = newestPrice(dateValidPrices) ?? newestPrice(candidates);
+        return selectedPrice?.price_list_rate ?? null;
+      }),
+    );
   }
 
   getExchangeRate(fromCurrency: string, toCurrency: string, date: string): Observable<number> {
