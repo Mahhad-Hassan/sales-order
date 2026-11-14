@@ -36,6 +36,8 @@ export class CustomerInquiryFormPage {
   private childDefaults: Record<string, string | null> = {};
 
   protected readonly customers = signal<CustomerInquiryCustomer[]>([]);
+  protected readonly customerDropdownOpen = signal(false);
+  protected readonly customerSearch = signal('');
   protected readonly companies = signal<CustomerInquiryCompany[]>([]);
   protected readonly users = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly currencies = signal<CustomerInquiryLinkOption[]>([]);
@@ -47,6 +49,15 @@ export class CustomerInquiryFormPage {
   protected readonly itemRows = signal<CustomerInquiryDraftItem[]>([]);
   protected readonly groupBy = signal('Container No');
   protected readonly statuses = signal<string[]>([]);
+  protected readonly filteredCustomers = computed(() => {
+    const query = this.customerSearch().trim().toLocaleLowerCase();
+    return this.customers().filter((customer) => {
+      const name = customer.customer_name || customer.name;
+      return !query
+        || name.toLocaleLowerCase().includes(query)
+        || customer.name.toLocaleLowerCase().includes(query);
+    });
+  });
   protected readonly transportTypes = signal<string[]>([]);
   protected readonly shipmentLoads = signal<string[]>([]);
   protected readonly allowedOptions = signal<string[]>([]);
@@ -174,16 +185,34 @@ export class CustomerInquiryFormPage {
   }
 
   protected get customerName(): string {
-    return this.customers().find((customer) => customer.name === this.form.controls.customer.value)?.customer_name
-      ?? this.form.controls.customer.value;
+    return this.form.controls.customerName.value
+      || (this.customers().find((customer) => customer.name === this.form.controls.customer.value)?.customer_name
+        ?? this.form.controls.customer.value);
   }
 
-  protected setCustomer(event: Event): void {
-    const customerName = (event.target as HTMLSelectElement).value;
-    this.form.controls.customer.setValue(customerName);
+  protected setCustomerSearch(event: Event): void {
+    this.customerSearch.set((event.target as HTMLInputElement).value);
+  }
+
+  protected toggleCustomerDropdown(): void {
+    if (this.isReadOnly || this.form.disabled) {
+      return;
+    }
+    this.customerDropdownOpen.update((open) => !open);
+    this.customerSearch.set('');
+  }
+
+  protected closeCustomerDropdown(): void {
+    this.customerDropdownOpen.set(false);
+    this.customerSearch.set('');
+  }
+
+  protected selectCustomer(customer: CustomerInquiryCustomer): void {
+    this.form.controls.customer.setValue(customer.name);
     this.form.controls.customerName.setValue(
-      this.customers().find((customer) => customer.name === customerName)?.customer_name ?? '',
+      customer.customer_name || customer.name,
     );
+    this.closeCustomerDropdown();
     this.form.markAsDirty();
   }
 

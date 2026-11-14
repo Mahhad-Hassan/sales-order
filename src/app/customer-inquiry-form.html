@@ -49,16 +49,49 @@
               </label>
               <label class="form-field">
                 <span class="form-field-label">Customer *</span>
-                <select class="form-input" formControlName="customer" (change)="setCustomer($event)">
-                  <option value="">Select customer...</option>
-                  @for (customer of customers(); track customer.name) {
-                    <option [value]="customer.name">{{ customer.customer_name || customer.name }}</option>
+                <div class="customer-field relative">
+                  <button
+                    class="customer-select relative flex min-h-[44px] w-full items-center justify-between rounded-[10px] border px-3 text-left text-sm font-normal cursor-pointer"
+                    type="button"
+                    aria-haspopup="listbox"
+                    [attr.aria-expanded]="customerDropdownOpen()"
+                    [disabled]="isReadOnly || form.disabled"
+                    (click)="toggleCustomerDropdown()"
+                    (keydown.escape)="closeCustomerDropdown()"
+                  >
+                    <span class="truncate">{{ customerName || 'Select customer...' }}</span>
+                    <span class="absolute right-3 h-0 w-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-[currentColor]" aria-hidden="true"></span>
+                  </button>
+                  @if (customerDropdownOpen()) {
+                    <div class="customer-search-panel absolute z-[5] top-[calc(100%+6px)] right-0 left-0 min-h-12 rounded-xl border bg-white shadow-xl" role="region" aria-label="Customer search">
+                      <input
+                        class="customer-search-input w-full border-0 border-b bg-white px-3 py-2 text-sm font-normal outline-none"
+                        type="search"
+                        placeholder="Search customers"
+                        aria-label="Search customers"
+                        [value]="customerSearch()"
+                        (input)="setCustomerSearch($event)"
+                      />
+                      @if (filteredCustomers().length) {
+                        <div role="listbox" aria-label="Customer options">
+                          @for (customer of filteredCustomers(); track customer.name) {
+                            <button
+                              class="customer-option block w-full border-0 bg-white px-3 py-2 text-left text-sm font-normal cursor-pointer"
+                              type="button"
+                              role="option"
+                              [attr.aria-selected]="form.controls.customer.value === customer.name"
+                              (click)="selectCustomer(customer)"
+                            >
+                              {{ customer.customer_name || customer.name }}
+                            </button>
+                          }
+                        </div>
+                      } @else {
+                        <p class="m-0 px-3 py-3 text-left text-sm font-normal text-[#555]" role="status">No matching customers.</p>
+                      }
+                    </div>
                   }
-                </select>
-              </label>
-              <label class="form-field">
-                <span class="form-field-label">Customer Name</span>
-                <input class="form-input" [value]="customerName" readonly />
+                </div>
               </label>
               <label class="form-field">
                 <span class="form-field-label">Inquiry Date *</span>
