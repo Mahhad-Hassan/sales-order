@@ -24,7 +24,6 @@ export class FrappeCustomerInquiryService {
     incoterms: CustomerInquiryLinkOption[];
     items: CustomerInquiryItemOption[];
     uoms: CustomerInquiryLinkOption[];
-    brands: CustomerInquiryLinkOption[];
     metadata: CustomerInquiryMetadata;
   }> {
     return forkJoin({
@@ -44,11 +43,10 @@ export class FrappeCustomerInquiryService {
       incoterms: this.getAllPages<CustomerInquiryLinkOption>('Incoterm', ['name', 'title'], []),
       items: this.getAllPages<CustomerInquiryItemOption>(
         'Item',
-        ['item_code', 'item_name', 'stock_uom', 'brand'],
+        ['item_code', 'item_name', 'item_group', 'stock_uom', 'brand'],
         [['disabled', '=', 0]],
       ),
       uoms: this.getAllPages<CustomerInquiryLinkOption>('UOM', ['name'], []),
-      brands: this.getAllPages<CustomerInquiryLinkOption>('Brand', ['name'], []),
       metadata: forkJoin({
         parent: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Customer Inquiry'),
         child: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Customer Inquiry Item'),

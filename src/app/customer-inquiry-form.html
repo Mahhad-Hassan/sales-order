@@ -209,106 +209,151 @@
           </section>
 
           <section class="form-card" aria-label="Requested items">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="mb-4">
               <h2 class="form-section-title m-0"><i aria-hidden="true"></i>Requested Items</h2>
-              <label class="form-field min-w-[220px]">
-                <span class="form-field-label">Group Totals By</span>
-                <select class="form-input" [value]="groupBy()" [disabled]="isReadOnly" (change)="setGroupBy($event)">
-                  @for (option of groupByOptions(); track option) {
-                    <option [value]="option">{{ option }}</option>
-                  }
-                </select>
-              </label>
             </div>
-            <div class="grid gap-3">
-              @for (row of itemRows(); track row.rowId; let rowIndex = $index) {
-                <div class="grid grid-cols-1 items-end gap-3 rounded-xl border border-[#e3eae6] p-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <label class="form-field">
-                    <span class="form-field-label">Item *</span>
-                    <select class="form-input" [value]="row.item_code" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'item_code', $event)">
-                      <option value="">Select item...</option>
-                      @for (item of items(); track item.item_code) {
-                        <option [value]="item.item_code">{{ item.item_name || item.item_code }} ({{ item.item_code }})</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="form-field">
-                    <span class="form-field-label">Description</span>
-                    <input class="form-input" [value]="row.item_description" disabled />
-                  </label>
-                  <label class="form-field">
-                    <span class="form-field-label">Qty *</span>
-                    <input class="form-input" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'qty', $event)" />
-                  </label>
-                  <label class="form-field">
-                    <span class="form-field-label">UOM</span>
-                    <select class="form-input" [value]="row.uom" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
-                      <option value="">Select UOM...</option>
-                      @for (uom of uoms(); track uom.name) {
-                        <option [value]="uom.name">{{ uom.name }}</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="form-field">
-                    <span class="form-field-label">Container No</span>
-                    <input class="form-input" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
-                  </label>
-                  <label class="form-field">
-                    <span class="form-field-label">Target Price</span>
-                    <input class="form-input" type="number" min="0" step="any" [value]="row.target_price" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'target_price', $event)" />
-                  </label>
-                  <label class="form-field">
-                    <span class="form-field-label">Preferred Brand</span>
-                    <select class="form-input" [value]="row.preferred_brand" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'preferred_brand', $event)">
-                      <option value="">Select brand...</option>
-                      @for (brand of brands(); track brand.name) {
-                        <option [value]="brand.name">{{ brand.name }}</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="form-field">
-                    <span class="form-field-label">Shipment Load</span>
-                    <select class="form-input" [value]="row.shipment_load" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
-                      <option value="">Select shipment load...</option>
-                      @for (option of shipmentLoads(); track option) {
-                        <option [value]="option">{{ option }}</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="form-field lg:col-span-3">
-                    <span class="form-field-label">Item Remarks</span>
-                    <input class="form-input" [value]="row.remarks" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'remarks', $event)" />
-                  </label>
-                  @if (!isReadOnly) {
-                    <button class="remove-row-button min-h-[42px]" type="button" [disabled]="itemRows().length === 1" (click)="removeItem(rowIndex)">Remove</button>
+            <div class="overflow-x-auto rounded-xl border border-[#e3eae6]" (scroll)="updateItemDropdownPosition()">
+              <table class="w-full min-w-[1050px] border-collapse text-left text-sm">
+                <thead class="bg-[#f3f8f5] text-[#344a42]">
+                  <tr>
+                    <th class="p-3 font-bold">Item *</th>
+                    <th class="p-3 font-bold">Description</th>
+                    <th class="p-3 font-bold">Qty *</th>
+                    <th class="p-3 font-bold">UOM</th>
+                    <th class="p-3 font-bold">Container No</th>
+                    <th class="p-3 font-bold">Shipment Load</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of itemRows(); track row.rowId; let rowIndex = $index) {
+                    <tr class="border-t border-[#e3eae6] align-top">
+                      <td class="min-w-[220px] p-2">
+                        <div class="customer-field relative">
+                          <button
+                            class="customer-select relative flex min-h-[44px] w-full items-center justify-between rounded-[10px] border px-3 text-left text-sm font-normal cursor-pointer"
+                            type="button"
+                            aria-haspopup="listbox"
+                            [attr.aria-expanded]="itemDropdownRowId() === row.rowId"
+                            [disabled]="isReadOnly"
+                            (click)="toggleItemDropdown(row.rowId, $event)"
+                            (keydown.escape)="closeItemDropdown()"
+                          >
+                            <span class="truncate">
+                              {{ row.item_code ? (row.item_description || row.item_code) : 'Select item...' }}
+                            </span>
+                            <span class="absolute right-3 h-0 w-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-[currentColor]" aria-hidden="true"></span>
+                          </button>
+                        </div>
+                        @if (!isReadOnly) {
+                          <button class="remove-row-button mt-2 min-h-[38px] w-full" type="button" [disabled]="itemRows().length === 1" (click)="removeItem(rowIndex)">Remove</button>
+                        }
+                      </td>
+                      <td class="min-w-[180px] p-2">
+                        <input class="form-input" [value]="row.item_description" disabled />
+                      </td>
+                      <td class="min-w-[100px] p-2">
+                        <input class="form-input" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'qty', $event)" />
+                      </td>
+                      <td class="min-w-[120px] p-2">
+                        <select class="form-input" [value]="row.uom" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
+                          <option value="">Select UOM...</option>
+                          @for (uom of uoms(); track uom.name) {
+                            <option [value]="uom.name">{{ uom.name }}</option>
+                          }
+                        </select>
+                      </td>
+                      <td class="min-w-[140px] p-2">
+                        <input class="form-input" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
+                      </td>
+                      <td class="min-w-[150px] p-2">
+                        <select class="form-input" [value]="row.shipment_load" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
+                          <option value="">Select shipment load...</option>
+                          @for (option of shipmentLoads(); track option) {
+                            <option [value]="option">{{ option }}</option>
+                          }
+                        </select>
+                      </td>
+                    </tr>
                   }
-                </div>
-              }
+                </tbody>
+              </table>
             </div>
+            @if (itemDropdownRowId() !== null) {
+              <div
+                class="customer-search-panel fixed z-[50] min-h-12 rounded-xl border bg-white shadow-xl"
+                role="region"
+                aria-label="Item search"
+                [style.top.px]="itemDropdownPosition()?.top"
+                [style.left.px]="itemDropdownPosition()?.left"
+                [style.width.px]="itemDropdownPosition()?.width"
+              >
+                <input
+                  class="customer-search-input w-full border-0 border-b bg-white px-3 py-2 text-sm font-normal outline-none"
+                  type="search"
+                  placeholder="Search items"
+                  aria-label="Search items"
+                  [value]="itemSearch()"
+                  (input)="setItemSearch($event)"
+                />
+                @if (filteredItems().length) {
+                  <div class="max-h-64 overflow-y-auto" role="listbox" aria-label="Item options">
+                    @for (item of filteredItems(); track item.item_code) {
+                      <button
+                        class="customer-option block w-full border-0 bg-white px-3 py-2 text-left cursor-pointer"
+                        type="button"
+                        role="option"
+                        [attr.aria-selected]="itemDropdownRowIndex() >= 0 && itemRows()[itemDropdownRowIndex()].item_code === item.item_code"
+                        (click)="selectItem(itemDropdownRowIndex(), item)"
+                      >
+                        <span class="block text-sm font-semibold">{{ item.item_name || item.item_code }}</span>
+                        <span class="mt-0.5 block text-xs text-[#6d7d77]">{{ item.item_code }}{{ item.item_group ? ', ' + item.item_group : '' }}</span>
+                      </button>
+                    }
+                  </div>
+                } @else {
+                  <p class="m-0 px-3 py-3 text-left text-sm text-[#6d7d77]" role="status">No matching items.</p>
+                }
+              </div>
+            }
             @if (!isReadOnly) {
               <button class="add-row-button mt-3 w-full" type="button" (click)="addItem()"><span aria-hidden="true">+</span> Add Item</button>
             }
-            <div class="mt-4 flex justify-start">
-              <div class="order-total-summary">
-                <span class="order-total-label">TOTAL QUANTITY</span>
-                <output class="order-total-input" aria-label="Total quantity">{{ totalQuantity() }}</output>
-              </div>
-            </div>
+            <label class="form-field mt-5 block max-w-[360px]">
+              <span class="form-field-label">Group Totals By</span>
+              <select class="form-input" [value]="groupBy()" [disabled]="isReadOnly" (change)="setGroupBy($event)">
+                @for (option of groupByOptions(); track option) {
+                  <option [value]="option">{{ option }}</option>
+                }
+              </select>
+            </label>
             <section class="mt-5 rounded-xl border border-[#e3eae6] bg-[#fbfdfc] p-4" aria-label="Container group totals">
-              <h3 class="m-0 mb-3 text-sm font-extrabold text-[#14332b]">Container Group Totals</h3>
-              @if (groupedItemTotals().length) {
-                <div class="grid gap-2">
-                  @for (group of groupedItemTotals(); track group.key) {
-                    <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-4 border-b border-[#e3eae6] py-2 text-sm last:border-0">
-                      <span class="font-semibold text-[#344a42]">{{ group.key }}</span>
-                      <span class="text-right text-[#344a42]">{{ group.qty }} qty</span>
-                      <span class="text-right font-bold text-[#14332b]">{{ formatCurrency(group.targetTotal) }}</span>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <p class="m-0 text-sm text-[#6d7d77]">Add items to see grouped quantities and target totals.</p>
-              }
+              <h3 class="m-0 mb-3 text-sm font-extrabold text-[#14332b]">Group Totals</h3>
+              <div class="overflow-x-auto rounded-xl border border-[#e3eae6]">
+                <table class="w-full min-w-[680px] border-collapse text-left text-sm">
+                  <thead class="bg-[#f3f8f5] text-[#344a42]">
+                    <tr>
+                      <th class="p-3 font-bold">Container No</th>
+                      <th class="p-3 font-bold">Shipment Load</th>
+                      <th class="p-3 text-right font-bold">Qty</th>
+                      <th class="p-3 font-bold">UOM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (group of groupedItemTotals(); track $index) {
+                      <tr class="border-t border-[#e3eae6]">
+                        <td class="p-3 text-[#344a42]">{{ group.container_no || '—' }}</td>
+                        <td class="p-3 text-[#344a42]">{{ group.shipment_load || '—' }}</td>
+                        <td class="p-3 text-right text-[#344a42]">{{ group.qty }}</td>
+                        <td class="p-3 text-[#344a42]">{{ group.uom || '—' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td class="p-3 text-center text-[#6d7d77]" colspan="4">Select items above to populate group totals.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             </section>
           </section>
 

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -44,8 +44,14 @@ export class CustomerInquiryFormPage {
   protected readonly paymentTerms = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly incoterms = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly items = signal<CustomerInquiryItemOption[]>([]);
+  protected readonly itemDropdownRowId = signal<number | null>(null);
+  protected readonly itemSearch = signal('');
+  protected readonly itemDropdownPosition = signal<{ top: number; left: number; width: number } | null>(null);
+  protected readonly itemDropdownRowIndex = computed(
+    () => this.itemRows().findIndex((row) => row.rowId === this.itemDropdownRowId()),
+  );
+  private itemDropdownAnchor: HTMLElement | null = null;
   protected readonly uoms = signal<CustomerInquiryLinkOption[]>([]);
-  protected readonly brands = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly itemRows = signal<CustomerInquiryDraftItem[]>([]);
   protected readonly groupBy = signal('Container No');
   protected readonly statuses = signal<string[]>([]);
@@ -57,6 +63,13 @@ export class CustomerInquiryFormPage {
         || name.toLocaleLowerCase().includes(query)
         || customer.name.toLocaleLowerCase().includes(query);
     });
+  });
+  protected readonly filteredItems = computed(() => {
+    const query = this.itemSearch().trim().toLocaleLowerCase();
+    return this.items().filter((item) => !query
+      || item.item_name?.toLocaleLowerCase().includes(query)
+      || item.item_code.toLocaleLowerCase().includes(query)
+      || item.item_group?.toLocaleLowerCase().includes(query));
   });
   protected readonly transportTypes = signal<string[]>([]);
   protected readonly shipmentLoads = signal<string[]>([]);
@@ -72,32 +85,34 @@ export class CustomerInquiryFormPage {
   protected readonly docstatus = signal(0);
   protected readonly status = signal('Open');
   protected readonly groupedItemTotals = computed(() => {
-    const groupBy = this.groupBy();
-    const groups = new Map<string, { qty: number; targetTotal: number }>();
+    const groups = new Map<string, {
+      container_no: string;
+      shipment_load: string;
+      qty: number;
+      uom: string;
+    }>();
     for (const row of this.itemRows()) {
       if (!row.item_code) {
         continue;
       }
-      const key = groupBy === 'Preferred Brand'
-        ? row.preferred_brand || 'No Brand'
-        : row.container_no.trim() || 'No Container';
-      const group = groups.get(key) ?? { qty: 0, targetTotal: 0 };
+      const containerNo = row.container_no.trim();
+      const shipmentLoad = row.shipment_load.trim();
+      const uom = row.uom.trim();
+      const key = JSON.stringify([containerNo, shipmentLoad, uom]);
+      const group = groups.get(key) ?? {
+        container_no: containerNo,
+        shipment_load: shipmentLoad,
+        qty: 0,
+        uom,
+      };
       const qty = Number(row.qty);
-      const targetPrice = Number(row.target_price);
       if (Number.isFinite(qty)) {
         group.qty += qty;
-        if (row.target_price.trim() && Number.isFinite(targetPrice)) {
-          group.targetTotal += qty * targetPrice;
-        }
       }
       groups.set(key, group);
     }
-    return [...groups.entries()].map(([key, totals]) => ({ key, ...totals }));
+    return [...groups.values()];
   });
-  protected readonly totalQuantity = computed(() => this.itemRows().reduce((total, row) => {
-    const qty = Number(row.qty);
-    return row.item_code && Number.isFinite(qty) ? total + qty : total;
-  }, 0));
   protected readonly form = this.formBuilder.nonNullable.group({
     namingSeries: [''],
     customer: ['', Validators.required],
@@ -134,7 +149,6 @@ export class CustomerInquiryFormPage {
         this.incoterms.set(options.incoterms);
         this.items.set(options.items);
         this.uoms.set(options.uoms);
-        this.brands.set(options.brands);
         this.defaults = Object.fromEntries(options.metadata.parent.fields.map((field) => [
           field.fieldname,
           field.default ?? null,
@@ -223,6 +237,61 @@ export class CustomerInquiryFormPage {
     this.form.markAsDirty();
   }
 
+  protected toggleItemDropdown(rowId: number, event: MouseEvent): void {
+    if (this.isReadOnly) {
+      return;
+    }
+    if (this.itemDropdownRowId() === rowId) {
+      this.closeItemDropdown();
+      return;
+    }
+    this.itemDropdownRowId.set(rowId);
+    this.itemSearch.set('');
+    this.itemDropdownAnchor = event.currentTarget instanceof HTMLElement
+      ? event.currentTarget
+      : null;
+    this.updateItemDropdownPosition();
+  }
+
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  protected updateItemDropdownPosition(): void {
+    const anchor = this.itemDropdownAnchor;
+    if (!anchor || this.itemDropdownRowId() === null) {
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    this.itemDropdownPosition.set({
+      top: rect.bottom + 6,
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8)),
+      width: rect.width,
+    });
+  }
+
+  protected closeItemDropdown(): void {
+    this.itemDropdownRowId.set(null);
+    this.itemSearch.set('');
+    this.itemDropdownPosition.set(null);
+    this.itemDropdownAnchor = null;
+  }
+
+  protected setItemSearch(event: Event): void {
+    this.itemSearch.set((event.target as HTMLInputElement).value);
+  }
+
+  protected selectItem(index: number, item: CustomerInquiryItemOption): void {
+    this.itemRows.update((rows) => rows.map((row, rowIndex) => rowIndex !== index
+      ? row
+      : {
+        ...row,
+        item_code: item.item_code,
+        item_description: item.item_name ?? item.item_code,
+        uom: item.stock_uom ?? '',
+      }));
+    this.closeItemDropdown();
+    this.form.markAsDirty();
+  }
+
   protected setInquiryField(
     index: number,
     field: keyof Omit<CustomerInquiryDraftItem, 'rowId'>,
@@ -253,6 +322,7 @@ export class CustomerInquiryFormPage {
 
   protected removeItem(index: number): void {
     this.itemRows.update((rows) => rows.filter((_, rowIndex) => rowIndex !== index));
+    this.closeItemDropdown();
     this.form.markAsDirty();
   }
 
@@ -279,10 +349,6 @@ export class CustomerInquiryFormPage {
         return;
       }
       const targetPrice = row.target_price.trim() ? Number(row.target_price) : null;
-      if (targetPrice !== null && (!Number.isFinite(targetPrice) || targetPrice < 0)) {
-        this.error.set(`Enter a valid non-negative target price on row ${index + 1}.`);
-        return;
-      }
       validRows.push({
         doctype: 'Customer Inquiry Item',
         item_code: item.item_code,
@@ -394,11 +460,6 @@ export class CustomerInquiryFormPage {
       return `${this.status()} · Submitted`;
     }
     return this.docstatus() === 2 ? 'Cancelled' : `${this.status()} · Draft`;
-  }
-
-  protected formatCurrency(amount: number): string {
-    const currency = this.form.controls.currency.value;
-    return `${currency} ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
   }
 
   private loadRecord(name: string, preserveError = false): void {
