@@ -1,0 +1,329 @@
+<div class="sales-order-page min-h-screen">
+  <header class="sales-order-topbar relative flex min-h-[72px] items-center justify-between border-b px-[clamp(20px,5vw,76px)] max-[580px]:px-4">
+    <a class="sales-order-brand inline-flex items-center gap-3 no-underline" routerLink="/home" aria-label="Home">
+      <span class="sales-order-logo" aria-hidden="true">AV</span>
+      <span class="text-left">
+        <strong class="block text-[18px] font-extrabold leading-tight">AGROVISIONS</strong>
+        <small class="mt-1 block text-xs">Customer Inquiry Management</small>
+      </span>
+    </a>
+    <span class="text-sm font-semibold text-[#24765f] max-[580px]:hidden">{{ currentUser }}</span>
+  </header>
+
+  <section class="sales-order-hero px-[clamp(20px,5vw,76px)] pt-7 pb-[76px] text-white max-[700px]:px-4 max-[700px]:pt-6 max-[700px]:pb-[68px]">
+    <div class="mx-auto w-full max-w-[1200px]">
+      <p class="m-0 text-[13px] text-white/75"><a class="text-white/75 no-underline hover:text-white" routerLink="/home">Home</a><span class="px-1" aria-hidden="true">›</span><a class="text-white/75 no-underline hover:text-white" routerLink="/customer-inquiries">Customer Inquiries</a><span class="px-1" aria-hidden="true">›</span>{{ inquiryName() || 'New' }}</p>
+      <div class="mt-2 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 class="m-0 text-[clamp(28px,4vw,36px)] font-extrabold leading-tight">{{ inquiryName() || 'New Customer Inquiry' }}</h1>
+          <p class="mt-2 mb-0 text-sm text-white/80">Capture customer requirements and shipment details.</p>
+        </div>
+        @if (inquiryName()) {
+          <span class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">{{ statusLabel() }}</span>
+        }
+      </div>
+    </div>
+  </section>
+
+  <main class="sales-order-content w-full px-4 pb-8 max-[580px]:px-3">
+    <section class="mx-auto -mt-12 w-full max-w-[1200px]">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e3eae6] bg-white p-4 shadow-sm">
+        <a class="toolbar-back inline-flex min-h-[42px] items-center rounded-[10px] border px-[13px] py-2 text-sm font-semibold no-underline" routerLink="/customer-inquiries">← Back to Customer Inquiries</a>
+        @if (inquiryName()) {
+          <span class="text-sm text-[#6d7d77]">Customer Inquiry {{ inquiryName() }}</span>
+        }
+      </div>
+
+      @if (optionsLoading() || loading()) {
+        <p class="rounded-xl border border-dashed bg-white p-5 text-center text-sm text-[#6d7d77]" role="status">
+          {{ optionsLoading() ? 'Loading Customer Inquiry fields and Frappe options...' : 'Loading Customer Inquiry...' }}
+        </p>
+      } @else {
+        <form class="grid gap-5" [formGroup]="form" (ngSubmit)="save(false)">
+          <section class="form-card" aria-label="Inquiry details">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Inquiry Details</h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="form-field">
+                <span class="form-field-label">Series</span>
+                <input class="form-input" formControlName="namingSeries" readonly />
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Customer *</span>
+                <select class="form-input" formControlName="customer" (change)="setCustomer($event)">
+                  <option value="">Select customer...</option>
+                  @for (customer of customers(); track customer.name) {
+                    <option [value]="customer.name">{{ customer.customer_name || customer.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Customer Name</span>
+                <input class="form-input" [value]="customerName" readonly />
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Inquiry Date *</span>
+                <input class="form-input" type="date" formControlName="inquiryDate" />
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Required Date *</span>
+                <input class="form-input" type="date" formControlName="requiredDate" />
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Status</span>
+                <select class="form-input" formControlName="status">
+                  @for (option of statuses(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Company *</span>
+                <select class="form-input" formControlName="company">
+                  <option value="">Select company...</option>
+                  @for (company of companies(); track company.name) {
+                    <option [value]="company.name">{{ company.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Responsible</span>
+                <select class="form-input" formControlName="responsible">
+                  <option value="">Select responsible user...</option>
+                  @for (user of users(); track user.name) {
+                    <option [value]="user.name">{{ user.full_name || user.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Currency *</span>
+                <select class="form-input" formControlName="currency">
+                  <option value="">Select currency...</option>
+                  @for (currency of currencies(); track currency.name) {
+                    <option [value]="currency.name">{{ currency.name }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Payment Term</span>
+                <select class="form-input" formControlName="paymentTerm">
+                  <option value="">Select payment term...</option>
+                  @for (term of paymentTerms(); track term.name) {
+                    <option [value]="term.name">{{ term.name }}</option>
+                  }
+                </select>
+              </label>
+              @if (form.controls.amendedFrom.value) {
+                <label class="form-field">
+                  <span class="form-field-label">Amended From</span>
+                  <input class="form-input" formControlName="amendedFrom" readonly />
+                </label>
+              }
+              <label class="form-field">
+                <span class="form-field-label">RFQ Emails Sent</span>
+                <input class="h-4 w-4 accent-[#24765f]" type="checkbox" [checked]="form.controls.rfqEmailsSent.value" [disabled]="true" />
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card" aria-label="Shipment details">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Shipment Details</h2>
+            <label class="mb-4 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-[#344a42]">
+              <input class="h-4 w-4 accent-[#24765f]" type="checkbox" formControlName="shipmentRequired" />
+              Shipment Required
+            </label>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="form-field">
+                <span class="form-field-label">Incoterm</span>
+                <select class="form-input" formControlName="incoterms">
+                  <option value="">Select Incoterm...</option>
+                  @for (incoterm of incoterms(); track incoterm.name) {
+                    <option [value]="incoterm.name">{{ incoterm.name }}{{ incoterm.title ? ' - ' + incoterm.title : '' }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Port</span>
+                <input class="form-input" formControlName="port" />
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Transport Type</span>
+                <select class="form-input" formControlName="transportType">
+                  <option value="">Select transport type...</option>
+                  @for (option of transportTypes(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Partial Shipment</span>
+                <select class="form-input" formControlName="partialShipment">
+                  <option value="">Select option...</option>
+                  @for (option of allowedOptions(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Trans-shipment</span>
+                <select class="form-input" formControlName="transshipment">
+                  <option value="">Select option...</option>
+                  @for (option of allowedOptions(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card" aria-label="Requested items">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 class="form-section-title m-0"><i aria-hidden="true"></i>Requested Items</h2>
+              <label class="form-field min-w-[220px]">
+                <span class="form-field-label">Group Totals By</span>
+                <select class="form-input" [value]="groupBy()" [disabled]="isReadOnly" (change)="setGroupBy($event)">
+                  @for (option of groupByOptions(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+            <div class="grid gap-3">
+              @for (row of itemRows(); track row.rowId; let rowIndex = $index) {
+                <div class="grid grid-cols-1 items-end gap-3 rounded-xl border border-[#e3eae6] p-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <label class="form-field">
+                    <span class="form-field-label">Item *</span>
+                    <select class="form-input" [value]="row.item_code" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'item_code', $event)">
+                      <option value="">Select item...</option>
+                      @for (item of items(); track item.item_code) {
+                        <option [value]="item.item_code">{{ item.item_name || item.item_code }} ({{ item.item_code }})</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field-label">Description</span>
+                    <input class="form-input" [value]="row.item_description" disabled />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field-label">Qty *</span>
+                    <input class="form-input" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'qty', $event)" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field-label">UOM</span>
+                    <select class="form-input" [value]="row.uom" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
+                      <option value="">Select UOM...</option>
+                      @for (uom of uoms(); track uom.name) {
+                        <option [value]="uom.name">{{ uom.name }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field-label">Container No</span>
+                    <input class="form-input" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field-label">Target Price</span>
+                    <input class="form-input" type="number" min="0" step="any" [value]="row.target_price" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'target_price', $event)" />
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field-label">Preferred Brand</span>
+                    <select class="form-input" [value]="row.preferred_brand" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'preferred_brand', $event)">
+                      <option value="">Select brand...</option>
+                      @for (brand of brands(); track brand.name) {
+                        <option [value]="brand.name">{{ brand.name }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field-label">Shipment Load</span>
+                    <select class="form-input" [value]="row.shipment_load" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
+                      <option value="">Select shipment load...</option>
+                      @for (option of shipmentLoads(); track option) {
+                        <option [value]="option">{{ option }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="form-field lg:col-span-3">
+                    <span class="form-field-label">Item Remarks</span>
+                    <input class="form-input" [value]="row.remarks" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'remarks', $event)" />
+                  </label>
+                  @if (!isReadOnly) {
+                    <button class="remove-row-button min-h-[42px]" type="button" [disabled]="itemRows().length === 1" (click)="removeItem(rowIndex)">Remove</button>
+                  }
+                </div>
+              }
+            </div>
+            @if (!isReadOnly) {
+              <button class="add-row-button mt-3 w-full" type="button" (click)="addItem()"><span aria-hidden="true">+</span> Add Item</button>
+            }
+            <div class="mt-4 flex justify-start">
+              <div class="order-total-summary">
+                <span class="order-total-label">TOTAL QUANTITY</span>
+                <output class="order-total-input" aria-label="Total quantity">{{ totalQuantity() }}</output>
+              </div>
+            </div>
+            <section class="mt-5 rounded-xl border border-[#e3eae6] bg-[#fbfdfc] p-4" aria-label="Container group totals">
+              <h3 class="m-0 mb-3 text-sm font-extrabold text-[#14332b]">Container Group Totals</h3>
+              @if (groupedItemTotals().length) {
+                <div class="grid gap-2">
+                  @for (group of groupedItemTotals(); track group.key) {
+                    <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-4 border-b border-[#e3eae6] py-2 text-sm last:border-0">
+                      <span class="font-semibold text-[#344a42]">{{ group.key }}</span>
+                      <span class="text-right text-[#344a42]">{{ group.qty }} qty</span>
+                      <span class="text-right font-bold text-[#14332b]">{{ formatCurrency(group.targetTotal) }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="m-0 text-sm text-[#6d7d77]">Add items to see grouped quantities and target totals.</p>
+              }
+            </section>
+          </section>
+
+          <section class="form-card" aria-label="Customer confirmation">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Customer Confirmation</h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label class="form-field">
+                <span class="form-field-label">Confirmation Method</span>
+                <select class="form-input" formControlName="confirmationMethod">
+                  <option value="">Select confirmation method...</option>
+                  @for (option of confirmationMethods(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Confirmation Log</span>
+                <textarea class="form-input min-h-28" formControlName="confirmationLog"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card" aria-label="Inquiry notes">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Notes</h2>
+            <label class="form-field">
+              <span class="form-field-label">Notes</span>
+              <textarea class="form-input min-h-36" formControlName="remarks"></textarea>
+            </label>
+          </section>
+
+          @if (message()) {
+            <p class="m-0 rounded-xl border border-[#b9dccf] bg-[#e6f3ee] px-4 py-3 text-sm font-semibold text-[#24765f]" role="status">{{ message() }}</p>
+          }
+          @if (error()) {
+            <p class="m-0 rounded-xl border border-[#f1d4d0] bg-[#fff7f6] px-4 py-3 text-sm text-[#a34539]" role="alert">{{ error() }}</p>
+          }
+
+          <div class="flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-[#e3eae6] bg-white p-4 shadow-sm">
+            <button class="toolbar-back min-h-11 rounded-[10px] border px-5 py-2 text-sm font-bold" type="button" [disabled]="saving()" routerLink="/customer-inquiries">Back to Records</button>
+            @if (docstatus() === 1) {
+              <button class="remove-row-button min-h-11 px-5" type="button" [disabled]="saving()" (click)="cancelInquiry()">{{ saving() ? 'Cancelling...' : 'Cancel Inquiry' }}</button>
+            } @else if (!isReadOnly) {
+              <button class="toolbar-back min-h-11 rounded-[10px] border px-5 py-2 text-sm font-bold" type="submit" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Save Draft' }}</button>
+              <button class="primary-action min-h-11" type="button" [disabled]="saving()" (click)="save(true)">{{ saving() ? 'Submitting...' : 'Submit Inquiry' }}</button>
+            }
+          </div>
+        </form>
+      }
+    </section>
+  </main>
+</div>

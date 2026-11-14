@@ -2,6 +2,8 @@ import { CanDeactivateFn, Routes } from '@angular/router';
 import { App } from './app';
 import { frappeAuthGuard } from './guards/frappe-auth.guard';
 import { LoginPage } from './login';
+import { CustomerInquiryFormPage } from './customer-inquiry-form';
+import { CustomerInquiryListPage } from './customer-inquiry-list';
 import { DeliveryNoteFormPage } from './delivery-note-form';
 import { DeliveryNoteListPage } from './delivery-note-list';
 import { HomePage } from './home';
@@ -13,6 +15,9 @@ export const appRoutes: Routes = [
   { path: 'login', component: LoginPage },
   { path: 'home', component: HomePage, canActivate: [frappeAuthGuard] },
   { path: 'sales-orders', component: SalesOrderListPage, canActivate: [frappeAuthGuard] },
+  { path: 'customer-inquiries', component: CustomerInquiryListPage, canActivate: [frappeAuthGuard] },
+  { path: 'customer-inquiry/new', component: CustomerInquiryFormPage, canActivate: [frappeAuthGuard] },
+  { path: 'customer-inquiry/:name', component: CustomerInquiryFormPage, canActivate: [frappeAuthGuard] },
   { path: 'delivery-notes', component: DeliveryNoteListPage, canActivate: [frappeAuthGuard] },
   { path: 'delivery-note/new', component: DeliveryNoteFormPage, canActivate: [frappeAuthGuard] },
   { path: 'delivery-note/:name', component: DeliveryNoteFormPage, canActivate: [frappeAuthGuard] },

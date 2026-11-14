@@ -21,7 +21,7 @@
     </div>
   </section>
 
-  <main class="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-5 px-4 py-8 sm:grid-cols-2 max-[580px]:px-3">
+  <main class="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-5 px-4 py-8 sm:grid-cols-2 lg:grid-cols-3 max-[580px]:px-3">
     <a class="workspace-card group rounded-2xl border bg-white p-6 no-underline transition hover:-translate-y-1" routerLink="/sales-orders">
       <span class="workspace-card-icon" aria-hidden="true">SO</span>
       <h2 class="mt-5 mb-2 text-xl font-extrabold">Sales Orders</h2>
@@ -33,6 +33,12 @@
       <h2 class="mt-5 mb-2 text-xl font-extrabold">Delivery Notes</h2>
       <p class="m-0 text-sm leading-6">Create, review, and manage Delivery Notes.</p>
       <span class="workspace-card-link mt-5 inline-flex items-center gap-2 text-sm font-bold">Open Delivery Notes <span aria-hidden="true">→</span></span>
+    </a>
+    <a class="workspace-card group rounded-2xl border bg-white p-6 no-underline transition hover:-translate-y-1" routerLink="/customer-inquiries">
+      <span class="workspace-card-icon workspace-card-icon-inquiry" aria-hidden="true">CI</span>
+      <h2 class="mt-5 mb-2 text-xl font-extrabold">Customer Inquiry</h2>
+      <p class="m-0 text-sm leading-6">Capture customer requirements, shipment details, and requested items.</p>
+      <span class="workspace-card-link mt-5 inline-flex items-center gap-2 text-sm font-bold">Open Customer Inquiries <span aria-hidden="true">→</span></span>
     </a>
   </main>
 </div>
