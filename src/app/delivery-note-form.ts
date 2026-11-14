@@ -41,6 +41,7 @@ export class DeliveryNoteFormPage {
   protected readonly warehouses = signal<DeliveryNoteWarehouse[]>([]);
   protected readonly itemRows = signal<DeliveryNoteDraftItem[]>([this.emptyItem()]);
   protected readonly customerSearch = signal('');
+  private readonly selectedCompany = signal('');
   protected readonly optionsLoading = signal(true);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
@@ -55,7 +56,7 @@ export class DeliveryNoteFormPage {
       || `${customer.customer_name || customer.name} (${customer.name})`.toLocaleLowerCase().includes(query));
   });
   protected readonly filteredWarehouses = computed(() => {
-    const company = this.form.controls.company.value;
+    const company = this.selectedCompany();
     return this.warehouses().filter((warehouse) => warehouse.company === company);
   });
   protected readonly form = this.formBuilder.nonNullable.group({
@@ -156,6 +157,7 @@ export class DeliveryNoteFormPage {
   protected setCompany(event: Event): void {
     const companyName = (event.target as HTMLSelectElement).value;
     const company = this.companies().find((option) => option.name === companyName);
+    this.selectedCompany.set(companyName);
     this.form.controls.company.setValue(companyName);
     this.form.controls.warehouse.setValue(company?.default_warehouse ?? '');
     this.itemRows.update((rows) => rows.map((row) => ({
@@ -348,6 +350,7 @@ export class DeliveryNoteFormPage {
           poNo: record.po_no ?? '',
           poDate: record.po_date ?? '',
         }, { emitEvent: false });
+        this.selectedCompany.set(record.company);
         if (record.transporter && !this.suppliers().some((supplier) => supplier.name === record.transporter)) {
           this.suppliers.update((suppliers) => [...suppliers, { name: record.transporter as string }]);
         }
@@ -398,6 +401,7 @@ export class DeliveryNoteFormPage {
       poNo: '',
       poDate: '',
     }, { emitEvent: false });
+    this.selectedCompany.set('');
     this.itemRows.set([this.emptyItem()]);
     this.setNewOrderDefaults();
   }
@@ -407,6 +411,7 @@ export class DeliveryNoteFormPage {
       return;
     }
     const company = this.companies()[0];
+    this.selectedCompany.set(company.name);
     this.form.patchValue({
       company: company.name,
       warehouse: company.default_warehouse ?? '',
