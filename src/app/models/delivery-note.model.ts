@@ -58,6 +58,7 @@ export interface DeliveryNoteRecord extends Record<string, unknown> {
   status?: string;
   docstatus: number;
   currency?: string;
+  selling_price_list?: string | null;
   grand_total?: number;
   total_qty?: number;
   set_warehouse?: string | null;

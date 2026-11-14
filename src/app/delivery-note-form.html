@@ -76,15 +76,6 @@
                 </select>
               </label>
               <label class="form-field">
-                <span class="form-field-label">Price List *</span>
-                <select class="form-input" formControlName="priceList">
-                  <option value="">Select selling price list...</option>
-                  @for (priceList of priceLists(); track priceList.name) {
-                    <option [value]="priceList.name">{{ priceList.name }} ({{ priceList.currency }})</option>
-                  }
-                </select>
-              </label>
-              <label class="form-field">
                 <span class="form-field-label">Source Warehouse</span>
                 <select class="form-input" formControlName="warehouse">
                   <option value="">Select source warehouse...</option>

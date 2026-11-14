@@ -63,7 +63,7 @@ export class DeliveryNoteFormPage {
     postingDate: [this.today(), Validators.required],
     company: ['', Validators.required],
     warehouse: [''],
-    priceList: ['', Validators.required],
+    priceList: [''],
     terms: [''],
     transporter: [''],
     lrNo: [''],
@@ -158,10 +158,6 @@ export class DeliveryNoteFormPage {
     const company = this.companies().find((option) => option.name === companyName);
     this.form.controls.company.setValue(companyName);
     this.form.controls.warehouse.setValue(company?.default_warehouse ?? '');
-    const defaultPriceList = this.priceLists().find((priceList) =>
-      priceList.currency === company?.default_currency,
-    ) ?? this.priceLists()[0];
-    this.form.controls.priceList.setValue(defaultPriceList?.name ?? '');
     this.itemRows.update((rows) => rows.map((row) => ({
       ...row,
       warehouse: row.warehouse || company?.default_warehouse || '',
@@ -206,7 +202,7 @@ export class DeliveryNoteFormPage {
     this.message.set('');
     this.form.markAllAsTouched();
     if (this.form.invalid) {
-      this.error.set('Select a customer, company, posting date, and price list before saving.');
+      this.error.set('Select a customer, company, and posting date before saving.');
       return;
     }
     if (!this.namingSeries) {
@@ -215,8 +211,12 @@ export class DeliveryNoteFormPage {
     }
     const company = this.companies().find((option) => option.name === this.form.controls.company.value);
     const priceList = this.priceLists().find((option) => option.name === this.form.controls.priceList.value);
-    if (!company || !priceList) {
-      this.error.set('Select a valid company and selling price list.');
+    if (!company) {
+      this.error.set('Select a valid company.');
+      return;
+    }
+    if (!priceList) {
+      this.error.set('The Standard Selling price list is not configured in Frappe.');
       return;
     }
     const validRows: Array<Record<string, unknown>> = [];
@@ -338,7 +338,7 @@ export class DeliveryNoteFormPage {
           postingDate: record.posting_date,
           company: record.company,
           warehouse: record.set_warehouse ?? '',
-          priceList: this.priceLists().find((priceList) => priceList.currency === record.currency)?.name ?? '',
+          priceList: record.selling_price_list ?? this.standardSellingPriceList()?.name ?? '',
           terms: record.terms ?? '',
           transporter: record.transporter ?? '',
           lrNo: record.lr_no ?? '',
@@ -387,7 +387,7 @@ export class DeliveryNoteFormPage {
       postingDate: this.today(),
       company: '',
       warehouse: '',
-      priceList: '',
+      priceList: this.standardSellingPriceList()?.name ?? '',
       terms: '',
       transporter: '',
       lrNo: '',
@@ -407,14 +407,15 @@ export class DeliveryNoteFormPage {
       return;
     }
     const company = this.companies()[0];
-    const priceList = this.priceLists().find((option) =>
-      option.currency === company.default_currency,
-    ) ?? this.priceLists()[0];
     this.form.patchValue({
       company: company.name,
       warehouse: company.default_warehouse ?? '',
-      priceList: priceList?.name ?? '',
+      priceList: this.standardSellingPriceList()?.name ?? '',
     }, { emitEvent: false });
+  }
+
+  private standardSellingPriceList(): DeliveryNotePriceList | undefined {
+    return this.priceLists().find((priceList) => priceList.name === 'Standard Selling');
   }
 
   private emptyItem(): DeliveryNoteDraftItem {
