@@ -9,6 +9,7 @@ import {
   DeliveryNoteItemOption,
   DeliveryNotePriceList,
   DeliveryNoteRecord,
+  DeliveryNoteItemUom,
   DeliveryNoteWarehouse,
 } from './models/delivery-note.model';
 import { DeliveryNotePartyOption } from './models/delivery-note.model';
@@ -33,6 +34,7 @@ export class DeliveryNoteFormPage {
   private namingSeries = '';
   private nextItemRowId = 0;
   private readonly itemPriceRequestIds = new Map<number, number>();
+  private readonly itemUomRequestIds = new Map<number, number>();
 
   protected readonly companies = signal<DeliveryNoteCompany[]>([]);
   protected readonly customers = signal<Array<{ name: string; customer_name?: string | null }>>([]);
@@ -179,13 +181,13 @@ export class DeliveryNoteFormPage {
     this.itemRows.update((rows) => rows.filter((_, rowIndex) => rowIndex !== index));
   }
 
-  protected setItemField(index: number, field: 'item_code' | 'qty' | 'warehouse' | 'rate', event: Event): void {
+  protected setItemField(index: number, field: 'item_code' | 'uom' | 'qty' | 'warehouse' | 'rate', event: Event): void {
     const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
     const row = this.itemRows()[index];
     if (!row) {
       return;
     }
-    if (field === 'rate') {
+    if (field === 'rate' || field === 'uom') {
       this.itemPriceRequestIds.set(row.rowId, (this.itemPriceRequestIds.get(row.rowId) ?? 0) + 1);
     }
     this.itemRows.update((rows) => rows.map((row, rowIndex) => {
@@ -194,10 +196,23 @@ export class DeliveryNoteFormPage {
       }
       const updated = { ...row, [field]: value };
       if (field === 'item_code') {
+        const item = this.selectedItem(value);
         updated.warehouse = updated.warehouse || this.form.controls.warehouse.value;
+        updated.uom = item?.stock_uom ?? '';
+        updated.uomOptions = item ? [{ uom: item.stock_uom, conversion_factor: 1 }] : [];
+        updated.uomLoading = Boolean(item);
+        updated.uomError = '';
+        updated.conversion_factor = 1;
         updated.rate = '';
         updated.rateError = '';
         updated.rateLoading = Boolean(value);
+      } else if (field === 'uom') {
+        const selectedUom = row.uomOptions.find((option) => option.uom === value);
+        updated.conversion_factor = selectedUom?.conversion_factor ?? 1;
+        updated.rate = '';
+        updated.rateLoading = Boolean(value);
+        updated.rateError = '';
+        updated.uomError = '';
       } else if (field === 'rate') {
         updated.rateLoading = false;
         updated.rateError = '';
@@ -206,7 +221,10 @@ export class DeliveryNoteFormPage {
     }));
     this.form.markAsDirty();
     if (field === 'item_code' && value) {
-      this.fetchItemPrice(row.rowId, value);
+      this.fetchItemUoms(row.rowId, value, this.selectedItem(value)?.stock_uom ?? '');
+      this.fetchItemPrice(row.rowId, value, this.selectedItem(value)?.stock_uom ?? '');
+    } else if (field === 'uom' && value) {
+      this.fetchItemPrice(row.rowId, row.item_code, value);
     }
   }
 
@@ -248,6 +266,10 @@ export class DeliveryNoteFormPage {
       const quantity = Number(row.qty);
       const rateText = row.rate.trim();
       const rate = rateText ? Number(rateText) : undefined;
+      if (row.uomLoading) {
+        this.error.set(`Wait for the UOM options to load on item row ${index + 1}.`);
+        return;
+      }
       if (row.rateLoading) {
         this.error.set(`Wait for the Item Price to load on item row ${index + 1}.`);
         return;
@@ -261,9 +283,9 @@ export class DeliveryNoteFormPage {
         item_code: item.item_code,
         item_name: item.item_name || item.item_code,
         qty: quantity,
-        uom: item.stock_uom,
+        uom: row.uom,
         stock_uom: item.stock_uom,
-        conversion_factor: 1,
+        conversion_factor: row.conversion_factor,
         warehouse: row.warehouse || this.form.controls.warehouse.value || null,
         ...(rate === undefined ? {} : { rate }),
       });
@@ -383,12 +405,22 @@ export class DeliveryNoteFormPage {
         this.itemRows.set((record.items ?? []).map((item) => ({
           rowId: this.nextItemRowId++,
           item_code: item.item_code,
+          uom: item.uom || item.stock_uom || '',
+          uomOptions: this.initialItemUoms(item.item_code, item.uom, item.stock_uom, item.conversion_factor),
+          uomLoading: true,
+          uomError: '',
+          conversion_factor: item.conversion_factor ?? 1,
           qty: String(item.qty ?? ''),
           warehouse: item.warehouse ?? '',
           rate: item.rate === undefined ? '' : String(item.rate),
           rateLoading: false,
           rateError: '',
         })));
+        for (const row of this.itemRows()) {
+          if (row.item_code) {
+            this.fetchItemUoms(row.rowId, row.item_code, row.uom, row.conversion_factor);
+          }
+        }
         if (!this.itemRows().length) {
           this.itemRows.set([this.emptyItem()]);
         }
@@ -448,7 +480,7 @@ export class DeliveryNoteFormPage {
     return this.priceLists().find((priceList) => priceList.name === 'Standard Selling');
   }
 
-  private fetchItemPrice(rowId: number, itemCode: string): void {
+  private fetchItemPrice(rowId: number, itemCode: string, uom: string): void {
     const requestId = (this.itemPriceRequestIds.get(rowId) ?? 0) + 1;
     this.itemPriceRequestIds.set(rowId, requestId);
     const item = this.selectedItem(itemCode);
@@ -459,7 +491,7 @@ export class DeliveryNoteFormPage {
     this.deliveryNotes.getItemPriceRate(
       itemCode,
       'Standard Selling',
-      item.stock_uom,
+      uom,
       this.form.controls.postingDate.value,
     ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (rate) => {
@@ -495,10 +527,85 @@ export class DeliveryNoteFormPage {
     });
   }
 
+  private fetchItemUoms(
+    rowId: number,
+    itemCode: string,
+    preferredUom: string,
+    preferredConversionFactor = 1,
+  ): void {
+    const requestId = (this.itemUomRequestIds.get(rowId) ?? 0) + 1;
+    this.itemUomRequestIds.set(rowId, requestId);
+    const stockUom = this.selectedItem(itemCode)?.stock_uom ?? '';
+
+    this.deliveryNotes.getItemUoms(itemCode).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (itemUoms) => {
+        if (this.itemUomRequestIds.get(rowId) !== requestId) {
+          return;
+        }
+        const uomOptions = new Map<string, DeliveryNoteItemUom>();
+        uomOptions.set(stockUom, { uom: stockUom, conversion_factor: 1 });
+        for (const option of itemUoms) {
+          if (option.uom && Number.isFinite(option.conversion_factor) && option.conversion_factor > 0) {
+            uomOptions.set(option.uom, option);
+          }
+        }
+        if (preferredUom && !uomOptions.has(preferredUom)) {
+          uomOptions.set(preferredUom, {
+            uom: preferredUom,
+            conversion_factor: preferredConversionFactor,
+          });
+        }
+        this.itemRows.update((rows) => rows.map((row) => row.rowId === rowId && row.item_code === itemCode
+          ? {
+            ...row,
+            uomOptions: [...uomOptions.values()],
+            uomLoading: false,
+            conversion_factor: uomOptions.get(row.uom)?.conversion_factor ?? row.conversion_factor,
+          }
+          : row));
+      },
+      error: (error: unknown) => {
+        if (this.itemUomRequestIds.get(rowId) !== requestId) {
+          return;
+        }
+        this.itemRows.update((rows) => rows.map((row) => row.rowId === rowId && row.item_code === itemCode
+          ? {
+            ...row,
+            uomLoading: false,
+            uomError: `Could not load UOM options for ${itemCode}: ${this.errorMessage(error)}`,
+          }
+          : row));
+      },
+    });
+  }
+
+  private initialItemUoms(
+    itemCode: string,
+    preferredUom?: string | null,
+    stockUom?: string | null,
+    conversionFactor = 1,
+  ): DeliveryNoteItemUom[] {
+    const item = this.selectedItem(itemCode);
+    const options = new Map<string, DeliveryNoteItemUom>();
+    if (stockUom || item?.stock_uom) {
+      const uom = stockUom || item?.stock_uom || '';
+      options.set(uom, { uom, conversion_factor: 1 });
+    }
+    if (preferredUom && !options.has(preferredUom)) {
+      options.set(preferredUom, { uom: preferredUom, conversion_factor: conversionFactor });
+    }
+    return [...options.values()];
+  }
+
   private emptyItem(): DeliveryNoteDraftItem {
     return {
       rowId: this.nextItemRowId++,
       item_code: '',
+      uom: '',
+      uomOptions: [],
+      uomLoading: false,
+      uomError: '',
+      conversion_factor: 1,
       qty: '',
       warehouse: '',
       rate: '',

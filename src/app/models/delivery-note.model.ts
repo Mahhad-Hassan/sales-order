@@ -16,6 +16,11 @@ export interface DeliveryNoteItemOption {
   stock_uom: string;
 }
 
+export interface DeliveryNoteItemUom {
+  uom: string;
+  conversion_factor: number;
+}
+
 export interface DeliveryNoteItemPrice {
   name: string;
   item_code: string;
@@ -88,6 +93,11 @@ export interface DeliveryNoteRecord extends Record<string, unknown> {
 export interface DeliveryNoteDraftItem {
   rowId: number;
   item_code: string;
+  uom: string;
+  uomOptions: DeliveryNoteItemUom[];
+  uomLoading: boolean;
+  uomError: string;
+  conversion_factor: number;
   qty: string;
   warehouse: string;
   rate: string;

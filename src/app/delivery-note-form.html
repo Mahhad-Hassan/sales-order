@@ -105,10 +105,17 @@
                     <span class="form-field-label">Quantity *</span>
                     <input class="form-input" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setItemField(rowIndex, 'qty', $event)" />
                   </label>
-                  <div class="form-field">
+                  <label class="form-field">
                     <span class="form-field-label">UOM</span>
-                    <span class="form-input flex min-h-[44px] items-center">{{ selectedItem(row.item_code)?.stock_uom || '—' }}</span>
-                  </div>
+                    <select class="form-input" [value]="row.uom" [disabled]="isReadOnly || !row.item_code || row.uomLoading" (change)="setItemField(rowIndex, 'uom', $event)">
+                      @if (!row.uom) {
+                        <option value="">Select UOM...</option>
+                      }
+                      @for (uom of row.uomOptions; track uom.uom) {
+                        <option [value]="uom.uom">{{ uom.uom }}</option>
+                      }
+                    </select>
+                  </label>
                   <label class="form-field">
                     <span class="form-field-label">Rate</span>
                     <input class="form-input" type="number" min="0" step="any" [value]="row.rate" [disabled]="isReadOnly" [placeholder]="row.rateLoading ? 'Loading...' : 'Auto'" (input)="setItemField(rowIndex, 'rate', $event)" />
@@ -122,6 +129,9 @@
                 }
                 @if (row.rateError) {
                   <p class="-mt-2 mb-0 px-3 text-xs text-[#9b2c2c]" role="alert">{{ row.rateError }}</p>
+                }
+                @if (row.uomError) {
+                  <p class="-mt-2 mb-0 px-3 text-xs text-[#9b2c2c]" role="alert">{{ row.uomError }}</p>
                 }
               }
             </div>

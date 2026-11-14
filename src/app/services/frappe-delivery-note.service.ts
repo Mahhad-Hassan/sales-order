@@ -6,6 +6,7 @@ import {
   DeliveryNoteCustomer,
   DeliveryNoteItemPrice,
   DeliveryNoteItemOption,
+  DeliveryNoteItemUom,
   DeliveryNotePartyOption,
   DeliveryNotePriceList,
   DeliveryNoteRecord,
@@ -120,6 +121,12 @@ export class FrappeDeliveryNoteService {
         const selectedPrice = newestPrice(dateValidPrices) ?? newestPrice(candidates);
         return selectedPrice?.price_list_rate ?? null;
       }),
+    );
+  }
+
+  getItemUoms(itemCode: string): Observable<DeliveryNoteItemUom[]> {
+    return this.api.getDocument<{ uoms?: DeliveryNoteItemUom[] }>('Item', itemCode).pipe(
+      map((item) => item.uoms ?? []),
     );
   }
 
