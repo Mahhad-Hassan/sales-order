@@ -45,15 +45,22 @@
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <label class="form-field sm:col-span-2 lg:col-span-1">
                 <span class="form-field-label">Customer *</span>
-                @if (!isReadOnly) {
-                  <input class="form-input mb-2" type="search" aria-label="Search customers" placeholder="Search customer..." [value]="customerSearch()" (input)="setCustomerSearch($event)" />
-                }
-                <select class="form-input" formControlName="customer" aria-label="Customer" [attr.aria-required]="true">
-                  <option value="">Select customer...</option>
+                <input
+                  class="form-input"
+                  type="search"
+                  aria-label="Customer"
+                  placeholder="Search or select customer..."
+                  list="delivery-note-customers"
+                  [value]="customerInputValue"
+                  [disabled]="isReadOnly"
+                  [attr.aria-required]="true"
+                  (input)="setCustomerSearch($event)"
+                />
+                <datalist id="delivery-note-customers">
                   @for (customer of filteredCustomers(); track customer.name) {
-                    <option [value]="customer.name">{{ customer.customer_name || customer.name }} ({{ customer.name }})</option>
+                    <option [value]="(customer.customer_name || customer.name) + ' (' + customer.name + ')'"></option>
                   }
-                </select>
+                </datalist>
               </label>
               <label class="form-field">
                 <span class="form-field-label">Date *</span>

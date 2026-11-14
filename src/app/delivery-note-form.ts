@@ -52,7 +52,7 @@ export class DeliveryNoteFormPage {
   protected readonly filteredCustomers = computed(() => {
     const query = this.customerSearch().trim().toLocaleLowerCase();
     return this.customers().filter((customer) => !query
-      || `${customer.customer_name ?? ''} ${customer.name}`.toLocaleLowerCase().includes(query));
+      || `${customer.customer_name || customer.name} (${customer.name})`.toLocaleLowerCase().includes(query));
   });
   protected readonly filteredWarehouses = computed(() => {
     const company = this.form.controls.company.value;
@@ -125,8 +125,32 @@ export class DeliveryNoteFormPage {
     return this.docstatus() !== 0 && Boolean(this.orderName());
   }
 
+  protected get customerInputValue(): string {
+    const search = this.customerSearch();
+    if (search) {
+      return search;
+    }
+    const selected = this.customers().find((customer) => customer.name === this.form.controls.customer.value);
+    return selected ? `${selected.customer_name || selected.name} (${selected.name})` : '';
+  }
+
   protected setCustomerSearch(event: Event): void {
-    this.customerSearch.set((event.target as HTMLInputElement).value);
+    const value = (event.target as HTMLInputElement).value;
+    const normalizedValue = value.trim().toLocaleLowerCase();
+    const exactMatches = this.customers().filter((customer) =>
+      `${customer.customer_name || customer.name} (${customer.name})`.toLocaleLowerCase() === normalizedValue
+      || customer.name.toLocaleLowerCase() === normalizedValue,
+    );
+    const nameMatches = this.customers().filter((customer) =>
+      (customer.customer_name || customer.name).toLocaleLowerCase() === normalizedValue,
+    );
+    const selectedCustomer = exactMatches[0] ?? (nameMatches.length === 1 ? nameMatches[0] : undefined);
+
+    this.customerSearch.set(value);
+    if (this.form.controls.customer.value !== (selectedCustomer?.name ?? '')) {
+      this.form.controls.customer.setValue(selectedCustomer?.name ?? '');
+      this.form.controls.customer.markAsDirty();
+    }
   }
 
   protected setCompany(event: Event): void {
