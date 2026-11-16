@@ -122,7 +122,7 @@ export class CustomerInquiryFormPage {
     customer: ['', Validators.required],
     customerName: [''],
     inquiryDate: [this.today(), Validators.required],
-    requiredDate: ['', Validators.required],
+    requiredDate: [this.dateAfterDays(2), Validators.required],
     status: ['Open'],
     company: ['', Validators.required],
     responsible: [''],
@@ -554,6 +554,7 @@ export class CustomerInquiryFormPage {
     this.form.patchValue({
       namingSeries: defaults['naming_series'] ?? '',
       inquiryDate: defaults['inquiry_date'] === 'Today' ? today : defaults['inquiry_date'] ?? today,
+      requiredDate: this.dateAfterDays(2),
       status: defaults['status'] ?? 'Open',
       responsible,
       currency: this.currencies().some((option) => option.name === currency)
@@ -598,7 +599,7 @@ export class CustomerInquiryFormPage {
       customer: '',
       customerName: '',
       inquiryDate: this.today(),
-      requiredDate: '',
+      requiredDate: this.dateAfterDays(2),
       status: this.defaults['status'] ?? 'Open',
       company: '',
       responsible: this.defaults['responsible'] === '__user' ? this.currentUser : this.defaults['responsible'] ?? this.currentUser,
@@ -650,6 +651,12 @@ export class CustomerInquiryFormPage {
   private today(): string {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+
+  private dateAfterDays(days: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
   private errorMessage(error: unknown): string {
