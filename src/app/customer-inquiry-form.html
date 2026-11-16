@@ -158,57 +158,8 @@
             </div>
           </section>
 
-          <section class="form-card" aria-label="Shipment details">
-            <h2 class="form-section-title"><i aria-hidden="true"></i>Shipment Details</h2>
-            <label class="mb-4 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-[#344a42]">
-              <input class="h-4 w-4 accent-[#24765f]" type="checkbox" formControlName="shipmentRequired" />
-              Shipment Required
-            </label>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <label class="form-field">
-                <span class="form-field-label">Incoterm</span>
-                <select class="form-input" formControlName="incoterms">
-                  <option value="">Select Incoterm...</option>
-                  @for (incoterm of incoterms(); track incoterm.name) {
-                    <option [value]="incoterm.name">{{ incoterm.name }}{{ incoterm.title ? ' - ' + incoterm.title : '' }}</option>
-                  }
-                </select>
-              </label>
-              <label class="form-field">
-                <span class="form-field-label">Port</span>
-                <input class="form-input" formControlName="port" />
-              </label>
-              <label class="form-field">
-                <span class="form-field-label">Transport Type</span>
-                <select class="form-input" formControlName="transportType">
-                  <option value="">Select transport type...</option>
-                  @for (option of transportTypes(); track option) {
-                    <option [value]="option">{{ option }}</option>
-                  }
-                </select>
-              </label>
-              <label class="form-field">
-                <span class="form-field-label">Partial Shipment</span>
-                <select class="form-input" formControlName="partialShipment">
-                  <option value="">Select option...</option>
-                  @for (option of allowedOptions(); track option) {
-                    <option [value]="option">{{ option }}</option>
-                  }
-                </select>
-              </label>
-              <label class="form-field">
-                <span class="form-field-label">Trans-shipment</span>
-                <select class="form-input" formControlName="transshipment">
-                  <option value="">Select option...</option>
-                  @for (option of allowedOptions(); track option) {
-                    <option [value]="option">{{ option }}</option>
-                  }
-                </select>
-              </label>
-            </div>
-          </section>
 
-          <section class="form-card" aria-label="Requested items">
+           <section class="form-card" aria-label="Requested items">
             <div class="mb-4">
               <h2 class="form-section-title m-0"><i aria-hidden="true"></i>Requested Items</h2>
             </div>
@@ -356,6 +307,58 @@
               </div>
             </section>
           </section>
+
+          <section class="form-card" aria-label="Shipment details">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Shipment Details</h2>
+            <label class="mb-4 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-[#344a42]">
+              <input class="h-4 w-4 accent-[#24765f]" type="checkbox" formControlName="shipmentRequired" />
+              Shipment Required
+            </label>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="form-field">
+                <span class="form-field-label">Incoterm</span>
+                <select class="form-input" formControlName="incoterms">
+                  <option value="">Select Incoterm...</option>
+                  @for (incoterm of incoterms(); track incoterm.name) {
+                    <option [value]="incoterm.name">{{ incoterm.name }}{{ incoterm.title ? ' - ' + incoterm.title : '' }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Port</span>
+                <input class="form-input" formControlName="port" />
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Transport Type</span>
+                <select class="form-input" formControlName="transportType">
+                  <option value="">Select transport type...</option>
+                  @for (option of transportTypes(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Partial Shipment</span>
+                <select class="form-input" formControlName="partialShipment">
+                  <option value="">Select option...</option>
+                  @for (option of allowedOptions(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Trans-shipment</span>
+                <select class="form-input" formControlName="transshipment">
+                  <option value="">Select option...</option>
+                  @for (option of allowedOptions(); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          </section>
+
+         
 
           <section class="form-card" aria-label="Customer confirmation">
             <h2 class="form-section-title"><i aria-hidden="true"></i>Customer Confirmation</h2>
