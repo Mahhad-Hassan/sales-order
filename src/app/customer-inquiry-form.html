@@ -77,11 +77,15 @@
                     type="button"
                     aria-haspopup="listbox"
                     [attr.aria-expanded]="customerDropdownOpen()"
+                    [attr.aria-invalid]="!form.controls.customer.value && form.controls.customer.touched"
+                    [class.customer-required]="!form.controls.customer.value && form.controls.customer.touched"
                     [disabled]="isReadOnly || form.disabled"
                     (click)="toggleCustomerDropdown()"
                     (keydown.escape)="closeCustomerDropdown()"
                   >
-                    <span class="truncate">{{ customerName || 'Select customer...' }}</span>
+                    <span class="truncate" [class.customer-required-text]="!form.controls.customer.value && form.controls.customer.touched">
+                      {{ !form.controls.customer.value && form.controls.customer.touched ? 'Required field' : customerName || 'Select customer...' }}
+                    </span>
                     <span class="absolute right-3 h-0 w-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-[currentColor]" aria-hidden="true"></span>
                   </button>
                   @if (customerDropdownOpen()) {
