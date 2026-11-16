@@ -107,6 +107,16 @@
   color: #6d7d77;
 }
 
+.customer-select.customer-required,
+.customer-select.customer-required:focus {
+  border-color: #a34539;
+  box-shadow: 0 0 0 3px rgb(163 69 57 / 14%);
+}
+
+.customer-required-text {
+  color: #a34539;
+}
+
 .toolbar-back {
   border-color: #b9dccf;
   background: #e6f3ee;
