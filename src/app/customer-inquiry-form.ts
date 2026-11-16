@@ -86,21 +86,25 @@ export class CustomerInquiryFormPage {
   protected readonly status = signal('Open');
   protected readonly groupedItemTotals = computed(() => {
     const groups = new Map<string, {
-      container_no: string;
+      groupValue: string;
       shipment_load: string;
       qty: number;
       uom: string;
     }>();
+    const groupBy = this.groupBy();
     for (const row of this.itemRows()) {
       if (!row.item_code) {
         continue;
       }
-      const containerNo = row.container_no.trim();
+      const item = this.items().find((option) => option.item_code === row.item_code);
+      const groupValue = groupBy === 'Preferred Brand'
+        ? row.preferred_brand.trim() || item?.brand || ''
+        : row.container_no.trim();
       const shipmentLoad = row.shipment_load.trim();
       const uom = row.uom.trim();
-      const key = JSON.stringify([containerNo, shipmentLoad, uom]);
+      const key = JSON.stringify([groupValue, shipmentLoad, uom]);
       const group = groups.get(key) ?? {
-        container_no: containerNo,
+        groupValue,
         shipment_load: shipmentLoad,
         qty: 0,
         uom,
@@ -287,6 +291,7 @@ export class CustomerInquiryFormPage {
         item_code: item.item_code,
         item_description: item.item_name ?? item.item_code,
         uom: item.stock_uom ?? '',
+        preferred_brand: item.brand ?? '',
       }));
     this.closeItemDropdown();
     this.form.markAsDirty();
@@ -309,6 +314,7 @@ export class CustomerInquiryFormPage {
         ...(field === 'item_code' ? {
           item_description: selectedItem?.item_name ?? '',
           uom: selectedItem?.stock_uom ?? '',
+          preferred_brand: selectedItem?.brand ?? '',
         } : {}),
       }));
     this.form.markAsDirty();
@@ -519,7 +525,9 @@ export class CustomerInquiryFormPage {
           target_price: item.target_price === undefined || item.target_price === null
             ? ''
             : String(item.target_price),
-          preferred_brand: item.preferred_brand ?? '',
+          preferred_brand: item.preferred_brand
+            || this.items().find((option) => option.item_code === item.item_code)?.brand
+            || '',
           shipment_load: item.shipment_load ?? '',
           remarks: item.remarks ?? '',
         })));
