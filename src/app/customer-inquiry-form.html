@@ -141,15 +141,6 @@
                   }
                 </select>
               </label>
-              <label class="form-field">
-                <span class="form-field-label">Payment Term</span>
-                <select class="form-input" formControlName="paymentTerm">
-                  <option value="">Select payment term...</option>
-                  @for (term of paymentTerms(); track term.name) {
-                    <option [value]="term.name">{{ term.name }}</option>
-                  }
-                </select>
-              </label>
               @if (form.controls.amendedFrom.value) {
                 <label class="form-field">
                   <span class="form-field-label">Amended From</span>
@@ -320,6 +311,15 @@
               Shipment Required
             </label>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <label class="form-field">
+                <span class="form-field-label">Payment Term</span>
+                <select class="form-input" formControlName="paymentTerm">
+                  <option value="">Select payment term...</option>
+                  @for (term of paymentTerms(); track term.name) {
+                    <option [value]="term.name">{{ term.name }}</option>
+                  }
+                </select>
+              </label>
               <label class="form-field">
                 <span class="form-field-label">Incoterm</span>
                 <select class="form-input" formControlName="incoterms">
