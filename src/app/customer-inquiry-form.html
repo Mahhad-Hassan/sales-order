@@ -160,7 +160,7 @@
               <h2 class="form-section-title m-0"><i aria-hidden="true"></i>Requested Items</h2>
             </div>
             <div class="overflow-x-auto rounded-xl border border-[#e3eae6]" (scroll)="updateItemDropdownPosition()">
-              <table class="w-full min-w-[1050px] border-collapse text-left text-sm">
+              <table class="w-full min-w-[1120px] border-collapse text-left text-sm">
                 <thead class="bg-[#f3f8f5] text-[#344a42]">
                   <tr>
                     <th class="p-3 font-bold">Item *</th>
@@ -169,6 +169,9 @@
                     <th class="p-3 font-bold">UOM</th>
                     <th class="p-3 font-bold">Container No</th>
                     <th class="p-3 font-bold">Shipment Load</th>
+                    @if (!isReadOnly) {
+                      <th class="w-14 p-3 text-center font-bold">Action</th>
+                    }
                   </tr>
                 </thead>
                 <tbody>
@@ -191,9 +194,6 @@
                             <span class="absolute right-3 h-0 w-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-[currentColor]" aria-hidden="true"></span>
                           </button>
                         </div>
-                        @if (!isReadOnly) {
-                          <button class="remove-row-button mt-2 min-h-[38px] w-full" type="button" [disabled]="itemRows().length === 1" (click)="removeItem(rowIndex)">Remove</button>
-                        }
                       </td>
                       <td class="min-w-[180px] p-2">
                         <input class="form-input" [value]="row.item_description" disabled />
@@ -220,6 +220,24 @@
                           }
                         </select>
                       </td>
+                      @if (!isReadOnly) {
+                        <td class="w-14 p-2 text-center align-middle">
+                          <button
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e8bdb7] bg-white text-[#a34539] transition-colors hover:bg-[#fff7f6] disabled:cursor-not-allowed disabled:opacity-50"
+                            type="button"
+                            [attr.aria-label]="'Remove item row ' + (rowIndex + 1)"
+                            [disabled]="itemRows().length === 1"
+                            (click)="removeItem(rowIndex)"
+                          >
+                            <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M3 6h18" />
+                              <path d="M8 6V4h8v2" />
+                              <path d="m19 6-1 14H6L5 6" />
+                              <path d="M10 11v5M14 11v5" />
+                            </svg>
+                          </button>
+                        </td>
+                      }
                     </tr>
                   }
                 </tbody>
