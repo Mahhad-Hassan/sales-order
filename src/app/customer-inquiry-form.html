@@ -332,23 +332,23 @@
                 <table class="w-full min-w-[680px] border-collapse text-left text-sm">
                   <thead class="bg-[#f3f8f5] text-[#344a42]">
                     <tr>
-                      <th class="p-3 font-bold">Container No</th>
-                      <th class="p-3 font-bold">Shipment Load</th>
-                      <th class="p-3 text-right font-bold">Qty</th>
-                      <th class="p-3 font-bold">UOM</th>
+                      <th class="border border-[#d6e0da] p-3 font-bold">Container No</th>
+                      <th class="border border-[#d6e0da] p-3 font-bold">Shipment Load</th>
+                      <th class="border border-[#d6e0da] p-3 text-right font-bold">Qty</th>
+                      <th class="border border-[#d6e0da] p-3 font-bold">UOM</th>
                     </tr>
                   </thead>
                   <tbody>
                     @for (group of groupedItemTotals(); track $index) {
-                      <tr class="border-t border-[#e3eae6]">
-                        <td class="p-3 text-[#344a42]">{{ group.container_no || '—' }}</td>
-                        <td class="p-3 text-[#344a42]">{{ group.shipment_load || '—' }}</td>
-                        <td class="p-3 text-right text-[#344a42]">{{ group.qty }}</td>
-                        <td class="p-3 text-[#344a42]">{{ group.uom || '—' }}</td>
+                      <tr>
+                        <td class="border border-[#d6e0da] p-3 text-[#344a42]">{{ group.container_no || '—' }}</td>
+                        <td class="border border-[#d6e0da] p-3 text-[#344a42]">{{ group.shipment_load || '—' }}</td>
+                        <td class="border border-[#d6e0da] p-3 text-right text-[#344a42]">{{ group.qty }}</td>
+                        <td class="border border-[#d6e0da] p-3 text-[#344a42]">{{ group.uom || '—' }}</td>
                       </tr>
                     } @empty {
                       <tr>
-                        <td class="p-3 text-center text-[#6d7d77]" colspan="4">Select items above to populate group totals.</td>
+                        <td class="border border-[#d6e0da] p-3 text-center text-[#6d7d77]" colspan="4">Select items above to populate group totals.</td>
                       </tr>
                     }
                   </tbody>
