@@ -39,6 +39,7 @@ export class CustomerInquiryFormPage {
   protected readonly customerDropdownOpen = signal(false);
   protected readonly customerSearch = signal('');
   protected readonly companies = signal<CustomerInquiryCompany[]>([]);
+  protected readonly canChangeCompany = signal(false);
   protected readonly users = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly currencies = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly paymentTerms = signal<CustomerInquiryLinkOption[]>([]);
@@ -54,7 +55,6 @@ export class CustomerInquiryFormPage {
   protected readonly uoms = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly itemRows = signal<CustomerInquiryDraftItem[]>([]);
   protected readonly groupBy = signal('Container No');
-  protected readonly statuses = signal<string[]>([]);
   protected readonly filteredCustomers = computed(() => {
     const query = this.customerSearch().trim().toLocaleLowerCase();
     return this.customers().filter((customer) => {
@@ -143,10 +143,11 @@ export class CustomerInquiryFormPage {
   });
 
   constructor() {
-    this.inquiries.loadOptions().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.inquiries.loadOptions(this.currentUser).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (options) => {
         this.customers.set(options.customers);
         this.companies.set(options.companies);
+        this.canChangeCompany.set(options.canChangeCompany);
         this.users.set(options.users);
         this.currencies.set(options.currencies);
         this.paymentTerms.set(options.paymentTerms);
@@ -161,12 +162,12 @@ export class CustomerInquiryFormPage {
           field.fieldname,
           field.default ?? null,
         ]));
-        this.statuses.set(this.fieldOptions(options.metadata.parent.fields, 'status'));
         this.transportTypes.set(this.fieldOptions(options.metadata.parent.fields, 'transport_type'));
         this.shipmentLoads.set(this.fieldOptions(options.metadata.child.fields, 'shipment_load'));
         this.allowedOptions.set(this.fieldOptions(options.metadata.parent.fields, 'partial_shipment'));
         this.groupByOptions.set(this.fieldOptions(options.metadata.parent.fields, 'group_totals_by'));
         this.confirmationMethods.set(this.fieldOptions(options.metadata.parent.fields, 'confirmation_method'));
+        this.applyCompanyFieldPermission();
         this.applyDefaults();
         this.optionsLoaded = true;
         if (this.requestedName) {
@@ -536,6 +537,7 @@ export class CustomerInquiryFormPage {
         } else {
           this.form.enable({ emitEvent: false });
         }
+        this.applyCompanyFieldPermission();
         this.form.markAsPristine();
       },
       error: (error: unknown) => this.error.set(`Could not load Customer Inquiry ${name}: ${this.errorMessage(error)}`),
@@ -573,6 +575,15 @@ export class CustomerInquiryFormPage {
     }
   }
 
+  private applyCompanyFieldPermission(): void {
+    const companyControl = this.form.controls.company;
+    if (this.isReadOnly || !this.canChangeCompany()) {
+      companyControl.disable({ emitEvent: false });
+    } else {
+      companyControl.enable({ emitEvent: false });
+    }
+  }
+
   private resetNewInquiry(): void {
     this.currentRecord = null;
     this.inquiryName.set('');
@@ -581,6 +592,7 @@ export class CustomerInquiryFormPage {
     this.message.set('');
     this.error.set('');
     this.form.enable({ emitEvent: false });
+    this.applyCompanyFieldPermission();
     this.form.reset({
       namingSeries: this.defaults['naming_series'] ?? '',
       customer: '',

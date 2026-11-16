@@ -32,4 +32,10 @@ export interface FrappeDocTypeField {
 export interface FrappeDocTypeMetadata {
   name: string;
   fields: FrappeDocTypeField[];
+  permissions?: Array<{
+    role: string;
+    write?: number;
+    if_owner?: number;
+    permlevel?: number;
+  }>;
 }

@@ -15,7 +15,7 @@ import { FrappeApiService } from './frappe-api.service';
 export class FrappeCustomerInquiryService {
   private readonly api = inject(FrappeApiService);
 
-  loadOptions(): Observable<{
+  loadOptions(currentUser: string): Observable<{
     customers: CustomerInquiryCustomer[];
     companies: CustomerInquiryCompany[];
     users: CustomerInquiryLinkOption[];
@@ -24,6 +24,7 @@ export class FrappeCustomerInquiryService {
     incoterms: CustomerInquiryLinkOption[];
     items: CustomerInquiryItemOption[];
     uoms: CustomerInquiryLinkOption[];
+    canChangeCompany: boolean;
     metadata: CustomerInquiryMetadata;
   }> {
     return forkJoin({
@@ -47,11 +48,22 @@ export class FrappeCustomerInquiryService {
         [['disabled', '=', 0]],
       ),
       uoms: this.getAllPages<CustomerInquiryLinkOption>('UOM', ['name'], []),
+      userProfile: this.api.getDocument<{ roles?: Array<{ role: string }> }>('User', currentUser),
+      companyMetadata: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Company'),
       metadata: forkJoin({
         parent: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Customer Inquiry'),
         child: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Customer Inquiry Item'),
       }),
-    });
+    }).pipe(map(({ userProfile, companyMetadata, ...options }) => {
+      const roles = new Set((userProfile.roles ?? []).map(({ role }) => role));
+      const canChangeCompany = companyMetadata.permissions?.some((permission) =>
+        roles.has(permission.role)
+        && Number(permission.write) === 1
+        && Number(permission.if_owner ?? 0) === 0
+        && Number(permission.permlevel ?? 0) === 0,
+      ) ?? false;
+      return { ...options, canChangeCompany };
+    }));
   }
 
   getInquiries(): Observable<CustomerInquiryRecord[]> {

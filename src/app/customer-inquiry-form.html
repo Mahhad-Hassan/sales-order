@@ -40,13 +40,35 @@
         </p>
       } @else {
         <form class="grid gap-5" [formGroup]="form" (ngSubmit)="save(false)">
-          <section class="form-card" aria-label="Inquiry details">
-            <h2 class="form-section-title"><i aria-hidden="true"></i>Inquiry Details</h2>
+          <section class="form-card" aria-label="Inquiry document information">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Document Information</h2>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <label class="form-field">
                 <span class="form-field-label">Series</span>
                 <input class="form-input" formControlName="namingSeries" readonly />
               </label>
+              <label class="form-field">
+                <span class="form-field-label">Status</span>
+                <input class="form-input" formControlName="status" readonly />
+              </label>
+              <label class="form-field">
+                <span class="form-field-label">Company *</span>
+                <select class="form-input" formControlName="company">
+                  <option value="">Select company...</option>
+                  @for (company of companies(); track company.name) {
+                    <option [value]="company.name">{{ company.name }}</option>
+                  }
+                </select>
+                @if (!canChangeCompany() && !isReadOnly) {
+                  <small class="text-xs text-[#6d7d77]">Company is read-only for your account.</small>
+                }
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card" aria-label="Inquiry details">
+            <h2 class="form-section-title"><i aria-hidden="true"></i>Inquiry Details</h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <label class="form-field">
                 <span class="form-field-label">Customer *</span>
                 <div class="customer-field relative">
@@ -100,23 +122,6 @@
               <label class="form-field">
                 <span class="form-field-label">Required Date *</span>
                 <input class="form-input" type="date" formControlName="requiredDate" />
-              </label>
-              <label class="form-field">
-                <span class="form-field-label">Status</span>
-                <select class="form-input" formControlName="status">
-                  @for (option of statuses(); track option) {
-                    <option [value]="option">{{ option }}</option>
-                  }
-                </select>
-              </label>
-              <label class="form-field">
-                <span class="form-field-label">Company *</span>
-                <select class="form-input" formControlName="company">
-                  <option value="">Select company...</option>
-                  @for (company of companies(); track company.name) {
-                    <option [value]="company.name">{{ company.name }}</option>
-                  }
-                </select>
               </label>
               <label class="form-field">
                 <span class="form-field-label">Responsible</span>
