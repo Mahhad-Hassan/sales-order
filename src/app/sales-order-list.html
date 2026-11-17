@@ -100,6 +100,11 @@
           <button class="try-again-button mt-2 cursor-pointer rounded-lg border bg-white px-3 py-1 font-bold" type="button" (click)="loadOrders()">Try again</button>
         </div>
       }
+      @if (linkedStatusWarning()) {
+        <p class="sales-order-list-error mt-3 rounded-xl border px-3 py-[10px] text-base leading-[1.7]" role="status">
+          {{ linkedStatusWarning() }}
+        </p>
+      }
 
       @if (loading() && orders().length === 0) {
         <p class="sales-order-list-notice my-0 rounded-xl border border-dashed px-3 py-[18px] text-center text-base" role="status">Loading Sales Orders...</p>

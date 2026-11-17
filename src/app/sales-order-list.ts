@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { EMPTY, catchError, forkJoin, map, switchMap, timer } from 'rxjs';
+import { EMPTY, catchError, forkJoin, map, of, switchMap, timer } from 'rxjs';
 import { SalesOrderListOption } from './models/sales-order.model';
 import { FrappeAuthService } from './services/frappe-auth.service';
 import { FrappeSalesOrderService } from './services/frappe-sales-order.service';
@@ -27,6 +27,7 @@ export class SalesOrderListPage {
   protected readonly currentPage = signal(1);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
+  protected readonly linkedStatusWarning = signal('');
   protected readonly filteredOrders = computed(() => {
     const query = this.searchText().trim().toLocaleLowerCase();
     const statusFilter = this.statusFilter();
@@ -82,7 +83,14 @@ export class SalesOrderListPage {
         }
         return forkJoin({
           salesOrders: this.salesOrders.getSalesOrderStatuses(orderNames),
-          linkedDocuments: this.salesOrders.getLinkedDocumentStatuses(orderNames),
+          linkedDocuments: this.salesOrders.getLinkedDocumentStatuses(orderNames).pipe(
+            catchError((error: unknown) => {
+              this.linkedStatusWarning.set(error instanceof Error
+                ? `Sales Order records loaded, but linked Delivery Note and Invoice statuses could not be refreshed: ${error.message}`
+                : 'Sales Order records loaded, but linked Delivery Note and Invoice statuses could not be refreshed.');
+              return of(this.emptyLinkedDocumentStatuses());
+            }),
+          ),
           workflowStyles: this.salesOrders.getWorkflowStateStyles(),
         }).pipe(
           map(({ salesOrders, linkedDocuments, workflowStyles }) => ({
@@ -187,9 +195,17 @@ export class SalesOrderListPage {
   protected loadOrders(): void {
     this.loading.set(true);
     this.error.set('');
+    this.linkedStatusWarning.set('');
     this.salesOrders.getAllSalesOrders().pipe(
       switchMap((orders) => forkJoin({
-        linkedStatuses: this.salesOrders.getLinkedDocumentStatuses(orders.map((order) => order.name)),
+        linkedStatuses: this.salesOrders.getLinkedDocumentStatuses(orders.map((order) => order.name)).pipe(
+          catchError((error: unknown) => {
+            this.linkedStatusWarning.set(error instanceof Error
+              ? `Sales Orders loaded, but linked Delivery Note and Invoice statuses could not be loaded: ${error.message}`
+              : 'Sales Orders loaded, but linked Delivery Note and Invoice statuses could not be loaded.');
+            return of(this.emptyLinkedDocumentStatuses());
+          }),
+        ),
         workflowStyles: this.salesOrders.getWorkflowStateStyles(),
       }).pipe(map(({ linkedStatuses, workflowStyles }) => ({
         orders: orders.map((order) => ({
@@ -268,5 +284,12 @@ export class SalesOrderListPage {
         this.error.set(error instanceof Error ? error.message : 'Could not sign out.');
       },
     });
+  }
+
+  private emptyLinkedDocumentStatuses(): Record<string, {
+    deliveryNoteStatus: string;
+    salesInvoiceStatus: string;
+  }> {
+    return {};
   }
 }

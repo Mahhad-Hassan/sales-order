@@ -142,8 +142,6 @@ export interface SalesOrderListOption extends Record<string, unknown> {
 }
 
 export interface LinkedDocumentItem {
-  name: string;
-  parent: string;
   against_sales_order?: string;
   sales_order?: string;
 }
@@ -152,6 +150,7 @@ export interface LinkedDocumentStatus extends Record<string, unknown> {
   name: string;
   status?: string;
   docstatus: number;
+  items?: LinkedDocumentItem[];
 }
 
 export interface WorkflowConfiguration {

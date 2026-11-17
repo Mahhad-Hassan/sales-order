@@ -7,7 +7,6 @@ import {
   EmployeeOption,
   IncotermOption,
   ItemPriceOption,
-  LinkedDocumentItem,
   LinkedDocumentStatus,
   PaymentTermOption,
   SalesOrderItemOption,
@@ -26,7 +25,6 @@ import { FrappeCompanyAccessService } from './frappe-company-access.service';
 export class FrappeSalesOrderService {
   private readonly api = inject(FrappeApiService);
   private readonly companyAccess = inject(FrappeCompanyAccessService);
-  private salesInvoiceOrderField: 'sales_order' | 'against_sales_order' | null = null;
 
   loadOptions(currentUser: string): Observable<{
     companies: CompanyOption[];
@@ -380,19 +378,15 @@ export class FrappeSalesOrderService {
 
     return forkJoin({
       deliveryNotes: this.getStatusesForLinkedDocuments(
-        'Delivery Note Item',
         'Delivery Note',
         'against_sales_order',
         salesOrderNames,
         true,
       ),
-      salesInvoices: this.getSalesInvoiceOrderField().pipe(
-        switchMap((salesOrderField) => this.getStatusesForLinkedDocuments(
-          'Sales Invoice Item',
-          'Sales Invoice',
-          salesOrderField,
-          salesOrderNames,
-        )),
+      salesInvoices: this.getStatusesForLinkedDocuments(
+        'Sales Invoice',
+        'sales_order',
+        salesOrderNames,
       ),
     }).pipe(
       map(({ deliveryNotes, salesInvoices }) => {
@@ -411,109 +405,49 @@ export class FrappeSalesOrderService {
     );
   }
 
-  private getSalesInvoiceOrderField(): Observable<'sales_order' | 'against_sales_order'> {
-    if (this.salesInvoiceOrderField) {
-      return of(this.salesInvoiceOrderField);
-    }
-
-    return this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Sales Invoice Item').pipe(
-      map((metadata) => {
-        const availableFields = new Set(metadata.fields.map((field) => field.fieldname));
-        const relationshipField = (['sales_order', 'against_sales_order'] as const)
-          .find((field) => availableFields.has(field));
-        if (!relationshipField) {
-          throw new Error('Sales Invoice Item does not expose a Sales Order relationship field.');
-        }
-        return relationshipField;
-      }),
-      tap((field) => {
-        this.salesInvoiceOrderField = field;
-      }),
-    );
-  }
-
   private getStatusesForLinkedDocuments(
-    childDocType: string,
     parentDocType: string,
     salesOrderField: 'against_sales_order' | 'sales_order',
     salesOrderNames: string[],
     includeStatusCounts = false,
   ): Observable<Record<string, string>> {
-    const salesOrderChunks = this.chunks(salesOrderNames, 50);
-    return from(salesOrderChunks).pipe(
-      concatMap((chunk) => this.getAllPages<Pick<LinkedDocumentItem, 'name'>>(
-        childDocType,
-        ['name'],
-        [[salesOrderField, 'in', chunk]],
-      )),
-      reduce((items, page) => {
-        items.push(...page);
-        return items;
-      }, [] as Array<Pick<LinkedDocumentItem, 'name'>>),
-      switchMap((childDocuments) => from(childDocuments).pipe(
-        mergeMap((child) => this.api.getDocument<LinkedDocumentItem>(childDocType, child.name), 8),
+    return this.getAllPages<LinkedDocumentStatus>(
+      parentDocType,
+      ['name', 'status', 'docstatus'],
+      [],
+    ).pipe(
+      switchMap((documents) => from(documents).pipe(
+        mergeMap((document) => this.api.getDocument<LinkedDocumentStatus>(parentDocType, document.name), 8),
         reduce((items, item) => {
           items.push(item);
           return items;
-        }, [] as LinkedDocumentItem[]),
+        }, [] as LinkedDocumentStatus[]),
       )),
-      switchMap((items) => {
-        const salesOrdersByParent = new Map<string, Set<string>>();
-        for (const item of items) {
-          const salesOrderName = item[salesOrderField];
-          if (!item.parent || !salesOrderName) {
-            continue;
+      map((documents) => {
+        const requestedOrders = new Set(salesOrderNames);
+        const statusBySalesOrder = new Map<string, Map<string, number>>();
+        for (const document of documents) {
+          const status = document.docstatus === 0 || document.docstatus === 2
+            ? this.documentStatus(document.docstatus)
+            : document.status || this.documentStatus(document.docstatus);
+          const linkedOrders = new Set((document.items ?? [])
+            .map((item) => item[salesOrderField])
+            .filter((name): name is string => Boolean(name && requestedOrders.has(name))));
+          for (const salesOrderName of linkedOrders) {
+            const statuses = statusBySalesOrder.get(salesOrderName) ?? new Map<string, number>();
+            statuses.set(
+              status,
+              includeStatusCounts ? (statuses.get(status) ?? 0) + 1 : 1,
+            );
+            statusBySalesOrder.set(salesOrderName, statuses);
           }
-          const linkedOrders = salesOrdersByParent.get(item.parent) ?? new Set<string>();
-          linkedOrders.add(salesOrderName);
-          salesOrdersByParent.set(item.parent, linkedOrders);
         }
-
-        const parentNames = [...salesOrdersByParent.keys()];
-        if (!parentNames.length) {
-          return of({});
-        }
-
-        return from(this.chunks(parentNames, 50)).pipe(
-          concatMap((chunk) => this.getAllPages<LinkedDocumentStatus>(
-            parentDocType,
-            ['name', 'status', 'docstatus'],
-            [['name', 'in', chunk]],
-          )),
-          reduce((documents, page) => {
-            documents.push(...page);
-            return documents;
-          }, [] as LinkedDocumentStatus[]),
-          map((documents) => {
-            const statusBySalesOrder = new Map<string, Map<string, number>>();
-            const statusByParent = new Map(documents.map((document) => [
-              document.name,
-              document.docstatus === 0 || document.docstatus === 2
-                ? this.documentStatus(document.docstatus)
-                : document.status || this.documentStatus(document.docstatus),
-            ]));
-            for (const [parentName, linkedSalesOrders] of salesOrdersByParent) {
-              const status = statusByParent.get(parentName);
-              if (!status) {
-                continue;
-              }
-              for (const salesOrderName of linkedSalesOrders) {
-                const statuses = statusBySalesOrder.get(salesOrderName) ?? new Map<string, number>();
-                statuses.set(
-                  status,
-                  includeStatusCounts ? (statuses.get(status) ?? 0) + 1 : 1,
-                );
-                statusBySalesOrder.set(salesOrderName, statuses);
-              }
-            }
-            return Object.fromEntries([...statusBySalesOrder].map(([name, statuses]) => [
-              name,
-              [...statuses].map(([status, count]) => includeStatusCounts
-                ? `${status} (${count})`
-                : status).join(', '),
-            ]));
-          }),
-        );
+        return Object.fromEntries([...statusBySalesOrder].map(([name, statuses]) => [
+          name,
+          [...statuses].map(([status, count]) => includeStatusCounts
+            ? `${status} (${count})`
+            : status).join(', '),
+        ]));
       }),
     );
   }
