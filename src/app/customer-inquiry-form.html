@@ -164,7 +164,7 @@
               <h2 class="form-section-title m-0"><i aria-hidden="true"></i>Requested Items</h2>
             </div>
             <div class="overflow-x-auto rounded-xl border border-[#e3eae6]" (scroll)="updateItemDropdownPosition()">
-              <table class="w-full min-w-[1120px] border-collapse text-left text-sm">
+              <table class="w-full min-w-[1320px] border-collapse text-left text-sm">
                 <thead class="bg-[#f3f8f5] text-[#344a42]">
                   <tr>
                     <th class="p-3 font-bold">Item *</th>
@@ -172,6 +172,7 @@
                     <th class="p-3 font-bold">Qty *</th>
                     <th class="p-3 font-bold">UOM</th>
                     <th class="p-3 font-bold">Container No</th>
+                    <th class="p-3 font-bold">Preferred Brand</th>
                     <th class="p-3 font-bold">Shipment Load</th>
                     @if (!isReadOnly) {
                       <th class="w-14 p-3 text-center font-bold">Action</th>
@@ -215,6 +216,9 @@
                       </td>
                       <td class="min-w-[140px] p-2">
                         <input class="form-input" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
+                      </td>
+                      <td class="min-w-[170px] p-2">
+                        <input class="form-input" [value]="row.preferred_brand" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'preferred_brand', $event)" />
                       </td>
                       <td class="min-w-[150px] p-2">
                         <select class="form-input" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
