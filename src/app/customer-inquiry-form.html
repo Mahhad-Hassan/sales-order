@@ -217,10 +217,10 @@
                         <input class="form-input" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
                       </td>
                       <td class="min-w-[150px] p-2">
-                        <select class="form-input" [value]="row.shipment_load" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
-                          <option value="">Select shipment load...</option>
+                        <select class="form-input" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
+                          <option value="" [selected]="!row.shipment_load">Select shipment load...</option>
                           @for (option of shipmentLoads(); track option) {
-                            <option [value]="option">{{ option }}</option>
+                            <option [value]="option" [selected]="option === row.shipment_load">{{ option }}</option>
                           }
                         </select>
                       </td>
