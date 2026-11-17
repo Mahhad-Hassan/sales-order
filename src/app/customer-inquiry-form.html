@@ -163,29 +163,29 @@
             <div class="mb-4">
               <h2 class="form-section-title m-0"><i aria-hidden="true"></i>Requested Items</h2>
             </div>
-            <div class="overflow-x-auto rounded-xl border border-[#e3eae6]" (scroll)="updateItemDropdownPosition()">
-              <table class="w-full min-w-[1320px] border-collapse text-left text-sm">
+            <div class="overflow-x-auto rounded-xl border border-[#d6e0da]" (scroll)="updateItemDropdownPosition()">
+              <table class="requested-items-table w-full min-w-[1320px] border-collapse text-left text-sm">
                 <thead class="bg-[#f3f8f5] text-[#344a42]">
                   <tr>
-                    <th class="p-3 font-bold">Item *</th>
-                    <th class="p-3 font-bold">Description</th>
-                    <th class="p-3 font-bold">Qty *</th>
-                    <th class="p-3 font-bold">UOM</th>
-                    <th class="p-3 font-bold">Container No</th>
-                    <th class="p-3 font-bold">Preferred Brand</th>
-                    <th class="p-3 font-bold">Shipment Load</th>
+                    <th class="border-r border-[#d6e0da] p-3 font-bold">Item *</th>
+                    <th class="border-r border-[#d6e0da] p-3 font-bold">Description</th>
+                    <th class="border-r border-[#d6e0da] p-3 font-bold">Qty *</th>
+                    <th class="border-r border-[#d6e0da] p-3 font-bold">UOM</th>
+                    <th class="border-r border-[#d6e0da] p-3 font-bold">Container No</th>
+                    <th class="border-r border-[#d6e0da] p-3 font-bold">Preferred Brand</th>
+                    <th class="border-r border-[#d6e0da] p-3 font-bold">Shipment Load</th>
                     @if (!isReadOnly) {
-                      <th class="w-14 p-3 text-center font-bold">Action</th>
+                      <th class="w-24 p-3 text-center font-bold">Action</th>
                     }
                   </tr>
                 </thead>
                 <tbody>
                   @for (row of itemRows(); track row.rowId; let rowIndex = $index) {
-                    <tr class="border-t border-[#e3eae6] align-top">
-                      <td class="min-w-[220px] p-2">
+                    <tr class="align-top">
+                      <td class="min-w-[220px] border-t border-r border-[#d6e0da] p-2">
                         <div class="customer-field relative">
                           <button
-                            class="customer-select relative flex min-h-[44px] w-full items-center justify-between rounded-[10px] border px-3 text-left text-sm font-normal cursor-pointer"
+                            class="relative flex min-h-[40px] w-full items-center justify-between rounded px-2 text-left text-sm font-normal cursor-pointer"
                             type="button"
                             aria-haspopup="listbox"
                             [attr.aria-expanded]="itemDropdownRowId() === row.rowId"
@@ -200,28 +200,28 @@
                           </button>
                         </div>
                       </td>
-                      <td class="min-w-[180px] p-2">
-                        <input class="form-input" [value]="row.item_description" disabled />
+                      <td class="min-w-[180px] border-t border-r border-[#d6e0da] p-2">
+                        <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" [value]="row.item_description" disabled />
                       </td>
-                      <td class="min-w-[100px] p-2">
-                        <input class="form-input" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'qty', $event)" />
+                      <td class="min-w-[100px] border-t border-r border-[#d6e0da] p-2">
+                        <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'qty', $event)" />
                       </td>
-                      <td class="min-w-[120px] p-2">
-                        <select class="form-input" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
+                      <td class="min-w-[120px] border-t border-r border-[#d6e0da] p-2">
+                        <select class="form-input border-0 bg-transparent shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
                           <option value="" [selected]="!row.uom">Select UOM...</option>
                           @for (uom of uoms(); track uom.name) {
                             <option [value]="uom.name" [selected]="uom.name === row.uom">{{ uom.name }}</option>
                           }
                         </select>
                       </td>
-                      <td class="min-w-[140px] p-2">
-                        <input class="form-input" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
+                      <td class="min-w-[140px] border-t border-r border-[#d6e0da] p-2">
+                        <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
                       </td>
-                      <td class="min-w-[170px] p-2">
-                        <input class="form-input" [value]="row.preferred_brand" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'preferred_brand', $event)" />
+                      <td class="min-w-[170px] border-t border-r border-[#d6e0da] p-2">
+                        <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" [value]="row.preferred_brand" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'preferred_brand', $event)" />
                       </td>
-                      <td class="min-w-[150px] p-2">
-                        <select class="form-input" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
+                      <td class="min-w-[150px] border-t border-r border-[#d6e0da] p-2">
+                        <select class="form-input border-0 bg-transparent shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
                           <option value="" [selected]="!row.shipment_load">Select shipment load...</option>
                           @for (option of shipmentLoads(); track option) {
                             <option [value]="option" [selected]="option === row.shipment_load">{{ option }}</option>
@@ -229,7 +229,7 @@
                         </select>
                       </td>
                       @if (!isReadOnly) {
-                        <td class="w-24 p-2 text-center align-middle">
+                        <td class="w-24 border-t border-[#d6e0da] p-2 text-center align-middle">
                           <div class="flex items-center justify-center gap-1">
                             <button
                               class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#cbd9d1] bg-white text-[#24765f] transition-colors hover:bg-[#f3f8f5]"
