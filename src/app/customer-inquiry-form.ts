@@ -372,7 +372,7 @@ export class CustomerInquiryFormPage {
         item_code: item.item_code,
         item_description: row.item_description || item.item_name || item.item_code,
         qty,
-        uom: row.uom || item.stock_uom || null,
+        uom: row.uom.trim() || item.stock_uom || null,
         container_no: row.container_no || null,
         target_price: targetPrice,
         preferred_brand: row.preferred_brand || null,
@@ -464,7 +464,7 @@ export class CustomerInquiryFormPage {
         if (wasCreated) {
           this.preserveNextLoadError = Boolean(submitError);
           void this.router.navigate(['/customer-inquiry', saved.name], { replaceUrl: true });
-        } else if (saved.docstatus !== 0 || submitError || workflowAction) {
+        } else {
           this.loadRecord(saved.name, Boolean(submitError));
         }
       },
@@ -593,7 +593,9 @@ export class CustomerInquiryFormPage {
           item_code: item.item_code,
           item_description: item.item_description ?? '',
           qty: String(item.qty ?? ''),
-          uom: item.uom ?? '',
+          uom: item.uom
+            || this.items().find((option) => option.item_code === item.item_code)?.stock_uom
+            || '',
           container_no: item.container_no ?? '',
           target_price: item.target_price === undefined || item.target_price === null
             ? ''

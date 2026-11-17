@@ -26,6 +26,7 @@ export interface CustomerInquiryItemOption {
 }
 
 export interface CustomerInquiryItemRecord extends Record<string, unknown> {
+  idx?: number;
   item_code: string;
   item_description?: string | null;
   qty: number;

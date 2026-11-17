@@ -206,10 +206,10 @@
                         <input class="form-input" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'qty', $event)" />
                       </td>
                       <td class="min-w-[120px] p-2">
-                        <select class="form-input" [value]="row.uom" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
-                          <option value="">Select UOM...</option>
+                        <select class="form-input" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
+                          <option value="" [selected]="!row.uom">Select UOM...</option>
                           @for (uom of uoms(); track uom.name) {
-                            <option [value]="uom.name">{{ uom.name }}</option>
+                            <option [value]="uom.name" [selected]="uom.name === row.uom">{{ uom.name }}</option>
                           }
                         </select>
                       </td>
