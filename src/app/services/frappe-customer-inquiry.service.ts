@@ -23,6 +23,7 @@ export class FrappeCustomerInquiryService {
     currencies: CustomerInquiryLinkOption[];
     paymentTerms: CustomerInquiryLinkOption[];
     incoterms: CustomerInquiryLinkOption[];
+    brands: CustomerInquiryLinkOption[];
     items: CustomerInquiryItemOption[];
     uoms: CustomerInquiryLinkOption[];
     canChangeCompany: boolean;
@@ -44,6 +45,7 @@ export class FrappeCustomerInquiryService {
       currencies: this.getAllPages<CustomerInquiryLinkOption>('Currency', ['name'], []),
       paymentTerms: this.getAllPages<CustomerInquiryLinkOption>('Indent Payment Term', ['name'], []),
       incoterms: this.getAllPages<CustomerInquiryLinkOption>('Incoterm', ['name', 'title'], []),
+      brands: this.getAllPages<CustomerInquiryLinkOption>('Brand', ['name'], []),
       items: this.getAllPages<CustomerInquiryItemOption>(
         'Item',
         ['item_code', 'item_name', 'item_group', 'stock_uom', 'brand'],

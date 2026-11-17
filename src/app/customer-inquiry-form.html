@@ -218,7 +218,12 @@
                         <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
                       </td>
                       <td class="min-w-[170px] border-t border-r border-[#d6e0da] p-2">
-                        <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" [value]="row.preferred_brand" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'preferred_brand', $event)" />
+                        <select class="form-input border-0 bg-transparent shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'preferred_brand', $event)">
+                          <option value="" [selected]="!row.preferred_brand">Select brand...</option>
+                          @for (brand of brands(); track brand.name) {
+                            <option [value]="brand.name" [selected]="brand.name === row.preferred_brand">{{ brand.name }}</option>
+                          }
+                        </select>
                       </td>
                       <td class="min-w-[150px] border-t border-r border-[#d6e0da] p-2">
                         <select class="form-input border-0 bg-transparent shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
@@ -413,7 +418,12 @@
                       </label>
                       <label class="form-field">
                         <span class="form-field-label">Preferred Brand</span>
-                        <input class="form-input" [value]="row.preferred_brand" (input)="setInquiryField(rowIndex, 'preferred_brand', $event)" />
+                        <select class="form-input" (change)="setInquiryField(rowIndex, 'preferred_brand', $event)">
+                          <option value="" [selected]="!row.preferred_brand">Select brand...</option>
+                          @for (brand of brands(); track brand.name) {
+                            <option [value]="brand.name" [selected]="brand.name === row.preferred_brand">{{ brand.name }}</option>
+                          }
+                        </select>
                       </label>
                       <label class="form-field">
                         <span class="form-field-label">Shipment Load</span>

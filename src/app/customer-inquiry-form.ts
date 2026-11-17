@@ -50,6 +50,7 @@ export class CustomerInquiryFormPage {
   protected readonly currencies = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly paymentTerms = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly incoterms = signal<CustomerInquiryLinkOption[]>([]);
+  protected readonly brands = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly items = signal<CustomerInquiryItemOption[]>([]);
   protected readonly itemDropdownRowId = signal<number | null>(null);
   protected readonly itemSearch = signal('');
@@ -164,6 +165,7 @@ export class CustomerInquiryFormPage {
         this.currencies.set(options.currencies);
         this.paymentTerms.set(options.paymentTerms);
         this.incoterms.set(options.incoterms);
+        this.brands.set(options.brands);
         this.items.set(options.items);
         this.uoms.set(options.uoms);
         this.defaults = Object.fromEntries(options.metadata.parent.fields.map((field) => [
