@@ -7,7 +7,10 @@
         <small class="mt-1 block text-xs">Customer Inquiry Management</small>
       </span>
     </a>
-    <span class="text-sm font-semibold text-[#24765f] max-[580px]:hidden">{{ currentUser }}</span>
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-semibold text-[#24765f] max-[580px]:hidden">{{ currentUser }}</span>
+      <button class="rounded-[10px] border border-[#d6e0da] bg-white px-3 py-2 text-sm font-bold text-[#24765f] hover:bg-[#f3f8f5]" type="button" (click)="logout()">Sign out</button>
+    </div>
   </header>
 
   <section class="sales-order-hero px-[clamp(20px,5vw,76px)] pt-7 pb-[76px] text-white max-[700px]:px-4 max-[700px]:pt-6 max-[700px]:pb-[68px]">

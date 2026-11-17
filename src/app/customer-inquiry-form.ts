@@ -213,6 +213,13 @@ export class CustomerInquiryFormPage {
     return this.auth.currentUser() ?? '';
   }
 
+  protected logout(): void {
+    this.auth.logout().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => void this.router.navigate(['/login']),
+      error: () => void this.router.navigate(['/login']),
+    });
+  }
+
   protected get isReadOnly(): boolean {
     return this.docstatus() !== 0 && Boolean(this.inquiryName());
   }
