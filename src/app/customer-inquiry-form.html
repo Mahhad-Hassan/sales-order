@@ -53,14 +53,20 @@
               </label>
               <label class="form-field">
                 <span class="form-field-label">Company *</span>
-                <select class="form-input" formControlName="company">
-                  <option value="">Select company...</option>
-                  @for (company of companies(); track company.name) {
-                    <option [value]="company.name">{{ company.name }}</option>
-                  }
-                </select>
-                @if (!canChangeCompany() && !isReadOnly) {
-                  <small class="text-xs text-[#6d7d77]">Company is read-only for your account.</small>
+                @if (companies().length === 1) {
+                  <input class="form-input" formControlName="company" readonly />
+                } @else {
+                  <select class="form-input" formControlName="company">
+                    <option value="">Select company...</option>
+                    @for (company of companies(); track company.name) {
+                      <option [value]="company.name">{{ company.name }}</option>
+                    }
+                  </select>
+                }
+                @if (!isReadOnly && (companies().length === 1 || !canChangeCompany())) {
+                  <small class="text-xs text-[#6d7d77]">
+                    {{ companies().length === 1 ? 'Only one company is available for your account.' : 'Company is read-only for your account.' }}
+                  </small>
                 }
               </label>
             </div>

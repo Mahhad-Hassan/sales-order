@@ -647,6 +647,9 @@ export class CustomerInquiryFormPage {
       inquiryDate: defaults['inquiry_date'] === 'Today' ? today : defaults['inquiry_date'] ?? today,
       requiredDate: this.dateAfterDays(2),
       status: defaults['status'] ?? 'Open',
+      company: this.companies().length === 1
+        ? this.companies()[0].name
+        : defaults['company'] ?? '',
       responsible,
       currency: this.currencies().some((option) => option.name === currency)
         ? currency
@@ -669,7 +672,7 @@ export class CustomerInquiryFormPage {
 
   private applyCompanyFieldPermission(): void {
     const companyControl = this.form.controls.company;
-    if (this.isReadOnly || !this.canChangeCompany()) {
+    if (this.isReadOnly || !this.canChangeCompany() || this.companies().length <= 1) {
       companyControl.disable({ emitEvent: false });
     } else {
       companyControl.enable({ emitEvent: false });
@@ -728,7 +731,9 @@ export class CustomerInquiryFormPage {
       inquiryDate: this.today(),
       requiredDate: this.dateAfterDays(2),
       status: this.defaults['status'] ?? 'Open',
-      company: '',
+      company: this.companies().length === 1
+        ? this.companies()[0].name
+        : this.defaults['company'] ?? '',
       responsible: this.defaults['responsible'] === '__user' ? this.currentUser : this.defaults['responsible'] ?? this.currentUser,
       currency: this.defaults['currency'] ?? 'USD',
       paymentTerm: this.defaults['payment_term'] ?? '',
