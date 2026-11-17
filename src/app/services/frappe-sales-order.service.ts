@@ -20,14 +20,17 @@ import {
 } from '../models/sales-order.model';
 import { FrappeDocTypeMetadata, FrappeMethodResponse } from '../models/frappe-api.model';
 import { FrappeApiService } from './frappe-api.service';
+import { FrappeCompanyAccessService } from './frappe-company-access.service';
 
 @Injectable({ providedIn: 'root' })
 export class FrappeSalesOrderService {
   private readonly api = inject(FrappeApiService);
+  private readonly companyAccess = inject(FrappeCompanyAccessService);
   private salesInvoiceOrderField: 'sales_order' | 'against_sales_order' | null = null;
 
-  loadOptions(): Observable<{
+  loadOptions(currentUser: string): Observable<{
     companies: CompanyOption[];
+    canChangeCompany: boolean;
     employees: EmployeeOption[];
     incoterms: IncotermOption[];
     items: SalesOrderItemOption[];
@@ -45,6 +48,7 @@ export class FrappeSalesOrderService {
         [],
         500,
       ),
+      companyAccess: this.companyAccess.getAccess(currentUser, 'Sales Order'),
       employees: this.getAllPages<EmployeeOption>('Employee', ['name', 'employee_name', 'user_id'], []),
       incoterms: this.api.getList<IncotermOption>('Incoterm', ['name', 'title'], [], 500),
       items: this.api.getList<SalesOrderItemOption>(
@@ -74,7 +78,13 @@ export class FrappeSalesOrderService {
       salesOrderMetadata: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Sales Order'),
       salesOrderWorkflow: this.getActiveWorkflowConfiguration('Sales Order'),
       workflowStateStyles: this.getWorkflowStateStyles(),
-    });
+    }).pipe(map(({ companyAccess, ...options }) => ({
+      ...options,
+      companies: companyAccess.allowedCompanyNames
+        ? options.companies.filter((company) => companyAccess.allowedCompanyNames?.includes(company.name))
+        : options.companies,
+      canChangeCompany: companyAccess.canChangeCompany,
+    })));
   }
 
   getSalesOrder(name: string): Observable<SalesOrderRecord> {

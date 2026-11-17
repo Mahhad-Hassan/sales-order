@@ -13,13 +13,16 @@ import {
   DeliveryNoteWarehouse,
 } from '../models/delivery-note.model';
 import { FrappeApiService } from './frappe-api.service';
+import { FrappeCompanyAccessService } from './frappe-company-access.service';
 
 @Injectable({ providedIn: 'root' })
 export class FrappeDeliveryNoteService {
   private readonly api = inject(FrappeApiService);
+  private readonly companyAccess = inject(FrappeCompanyAccessService);
 
-  loadOptions(): Observable<{
+  loadOptions(currentUser: string): Observable<{
     companies: DeliveryNoteCompany[];
+    canChangeCompany: boolean;
     customers: DeliveryNoteCustomer[];
     items: DeliveryNoteItemOption[];
     priceLists: DeliveryNotePriceList[];
@@ -30,6 +33,7 @@ export class FrappeDeliveryNoteService {
   }> {
     return forkJoin({
       companies: this.getAllPages<DeliveryNoteCompany>('Company', ['name', 'default_currency', 'default_warehouse'], []),
+      companyAccess: this.companyAccess.getAccess(currentUser, 'Delivery Note'),
       customers: this.getAllPages<DeliveryNoteCustomer>(
         'Customer',
         ['name', 'customer_name', 'disabled'],
@@ -57,7 +61,13 @@ export class FrappeDeliveryNoteService {
         [['is_group', '=', 0], ['disabled', '=', 0]],
       ),
       metadata: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Delivery Note'),
-    });
+    }).pipe(map(({ companyAccess, ...options }) => ({
+      ...options,
+      companies: companyAccess.allowedCompanyNames
+        ? options.companies.filter((company) => companyAccess.allowedCompanyNames?.includes(company.name))
+        : options.companies,
+      canChangeCompany: companyAccess.canChangeCompany,
+    })));
   }
 
   getDeliveryNotes(): Observable<DeliveryNoteRecord[]> {

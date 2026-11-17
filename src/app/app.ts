@@ -96,6 +96,7 @@ export class App {
   protected readonly billingEmailDropdownOpen = signal(false);
   protected readonly shippingEmailDropdownOpen = signal(false);
   protected readonly companies = signal<CompanyOption[]>([]);
+  protected readonly canChangeCompany = signal(false);
   protected readonly employees = signal<EmployeeOption[]>([]);
   protected readonly salesRepDropdownOpen = signal(false);
   protected readonly salesRepSearch = signal('');
@@ -293,6 +294,10 @@ export class App {
 
   protected get currentUser(): string {
     return this.auth.currentUser() ?? '';
+  }
+
+  protected get companyReadOnly(): boolean {
+    return this.orderForm.controls.company.disabled;
   }
 
   canDeactivate(): boolean {
@@ -1175,9 +1180,10 @@ export class App {
   }
 
   private loadSalesOrderOptions(): void {
-    this.salesOrders.loadOptions().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.salesOrders.loadOptions(this.currentUser).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (options) => {
         this.companies.set(options.companies);
+        this.canChangeCompany.set(options.canChangeCompany);
         this.employees.set(options.employees);
         this.setDefaultSalesRepForCurrentUser();
         this.incoterms.set(mergeUniqueByName(options.incoterms, this.incoterms()));
@@ -1205,6 +1211,7 @@ export class App {
         } else if (!orderName) {
           this.selectDefaultCompanyAndPriceList();
         }
+        this.applyCompanyFieldPermission();
         this.optionsLoading.set(false);
       },
       error: (error: unknown) => {
@@ -1312,6 +1319,7 @@ export class App {
         } else {
           this.orderForm.disable({ emitEvent: false });
         }
+        this.applyCompanyFieldPermission();
         this.activeCustomerName = '';
         this.loadSelectedCustomer(order.customer);
         const termName = order.payment_schedule?.[0]?.payment_term;
@@ -1519,6 +1527,7 @@ export class App {
     this.orderError.set('');
     this.orderMessage.set('');
     this.selectDefaultCompanyAndPriceList();
+    this.applyCompanyFieldPermission();
   }
 
   private setDefaultSalesRepForCurrentUser(): void {
@@ -1551,6 +1560,15 @@ export class App {
         company.name,
         this.orderForm.controls.sellingPriceList.value ?? '',
       );
+    }
+  }
+
+  private applyCompanyFieldPermission(): void {
+    const companyControl = this.orderForm.controls.company;
+    if (this.orderDocstatus() !== 0 || !this.canChangeCompany() || this.companies().length <= 1) {
+      companyControl.disable({ emitEvent: false });
+    } else {
+      companyControl.enable({ emitEvent: false });
     }
   }
 

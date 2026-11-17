@@ -37,6 +37,7 @@ export class DeliveryNoteFormPage {
   private readonly itemUomRequestIds = new Map<number, number>();
 
   protected readonly companies = signal<DeliveryNoteCompany[]>([]);
+  protected readonly canChangeCompany = signal(false);
   protected readonly customers = signal<Array<{ name: string; customer_name?: string | null }>>([]);
   protected readonly items = signal<DeliveryNoteItemOption[]>([]);
   protected readonly priceLists = signal<DeliveryNotePriceList[]>([]);
@@ -85,9 +86,10 @@ export class DeliveryNoteFormPage {
   });
 
   constructor() {
-    this.deliveryNotes.loadOptions().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.deliveryNotes.loadOptions(this.currentUser).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (options) => {
         this.companies.set(options.companies);
+        this.canChangeCompany.set(options.canChangeCompany);
         this.customers.set(options.customers);
         this.items.set(options.items);
         this.priceLists.set(options.priceLists);
@@ -104,6 +106,7 @@ export class DeliveryNoteFormPage {
         } else {
           this.setNewOrderDefaults();
         }
+        this.applyCompanyFieldPermission();
         this.optionsLoading.set(false);
       },
       error: (error: unknown) => {
@@ -132,6 +135,10 @@ export class DeliveryNoteFormPage {
 
   protected get isReadOnly(): boolean {
     return this.docstatus() !== 0 && Boolean(this.orderName());
+  }
+
+  protected get companyReadOnly(): boolean {
+    return this.isReadOnly || this.companies().length <= 1 || !this.canChangeCompany();
   }
 
   protected get customerInputValue(): string {
@@ -442,6 +449,7 @@ export class DeliveryNoteFormPage {
         } else {
           this.form.enable({ emitEvent: false });
         }
+        this.applyCompanyFieldPermission();
         this.form.markAsPristine();
       },
       error: (error: unknown) => this.error.set(`Could not load Delivery Note ${name}: ${this.errorMessage(error)}`),
@@ -474,10 +482,11 @@ export class DeliveryNoteFormPage {
     this.selectedCompany.set('');
     this.itemRows.set([this.emptyItem()]);
     this.setNewOrderDefaults();
+    this.applyCompanyFieldPermission();
   }
 
   private setNewOrderDefaults(): void {
-    if (!this.companies().length) {
+    if (this.companies().length !== 1) {
       return;
     }
     const company = this.companies()[0];
@@ -487,6 +496,16 @@ export class DeliveryNoteFormPage {
       warehouse: company.default_warehouse ?? '',
       priceList: this.standardSellingPriceList()?.name ?? '',
     }, { emitEvent: false });
+    this.applyCompanyFieldPermission();
+  }
+
+  private applyCompanyFieldPermission(): void {
+    const companyControl = this.form.controls.company;
+    if (this.companyReadOnly) {
+      companyControl.disable({ emitEvent: false });
+    } else {
+      companyControl.enable({ emitEvent: false });
+    }
   }
 
   private standardSellingPriceList(): DeliveryNotePriceList | undefined {

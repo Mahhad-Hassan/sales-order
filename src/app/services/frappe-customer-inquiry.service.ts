@@ -11,10 +11,12 @@ import {
 } from '../models/customer-inquiry.model';
 import { WorkflowConfiguration, WorkflowTransition } from '../models/sales-order.model';
 import { FrappeApiService } from './frappe-api.service';
+import { FrappeCompanyAccessService } from './frappe-company-access.service';
 
 @Injectable({ providedIn: 'root' })
 export class FrappeCustomerInquiryService {
   private readonly api = inject(FrappeApiService);
+  private readonly companyAccess = inject(FrappeCompanyAccessService);
 
   loadOptions(currentUser: string): Observable<{
     customers: CustomerInquiryCustomer[];
@@ -37,6 +39,7 @@ export class FrappeCustomerInquiryService {
         [['disabled', '=', 0]],
       ),
       companies: this.getAllPages<CustomerInquiryCompany>('Company', ['name', 'default_currency'], []),
+      companyAccess: this.companyAccess.getAccess(currentUser, 'Customer Inquiry'),
       users: this.getAllPages<CustomerInquiryLinkOption>(
         'User',
         ['name', 'full_name', 'enabled'],
@@ -52,22 +55,16 @@ export class FrappeCustomerInquiryService {
         [['disabled', '=', 0]],
       ),
       uoms: this.getAllPages<CustomerInquiryLinkOption>('UOM', ['name'], []),
-      userProfile: this.api.getDocument<{ roles?: Array<{ role: string }> }>('User', currentUser),
-      companyMetadata: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Company'),
       workflow: this.getActiveWorkflowConfiguration(),
       metadata: forkJoin({
         parent: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Customer Inquiry'),
         child: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Customer Inquiry Item'),
       }),
-    }).pipe(map(({ userProfile, companyMetadata, ...options }) => {
-      const roles = new Set((userProfile.roles ?? []).map(({ role }) => role));
-      const canChangeCompany = companyMetadata.permissions?.some((permission) =>
-        roles.has(permission.role)
-        && Number(permission.write) === 1
-        && Number(permission.if_owner ?? 0) === 0
-        && Number(permission.permlevel ?? 0) === 0,
-      ) ?? false;
-      return { ...options, canChangeCompany };
+    }).pipe(map(({ companyAccess, ...options }) => {
+      const companies = companyAccess.allowedCompanyNames
+        ? options.companies.filter((company) => companyAccess.allowedCompanyNames?.includes(company.name))
+        : options.companies;
+      return { ...options, companies, canChangeCompany: companyAccess.canChangeCompany };
     }));
   }
 
