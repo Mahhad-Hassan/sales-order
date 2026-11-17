@@ -50,6 +50,13 @@ export class DeliveryNoteListPage {
     return this.auth.currentUser() ?? '';
   }
 
+  protected logout(): void {
+    this.auth.logout().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => void this.router.navigate(['/login']),
+      error: () => void this.router.navigate(['/login']),
+    });
+  }
+
   protected setSearchText(event: Event): void {
     this.searchText.set((event.target as HTMLInputElement).value);
     this.currentPage.set(1);
