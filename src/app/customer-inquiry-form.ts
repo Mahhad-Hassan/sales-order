@@ -2,7 +2,7 @@ import { Component, DestroyRef, HostListener, computed, inject, signal } from '@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, finalize, map, of, switchMap } from 'rxjs';
+import { catchError, finalize, map, of, switchMap, throwError } from 'rxjs';
 import {
   CustomerInquiryCompany,
   CustomerInquiryCustomer,
@@ -11,6 +11,7 @@ import {
   CustomerInquiryLinkOption,
   CustomerInquiryRecord,
 } from './models/customer-inquiry.model';
+import { WorkflowConfiguration, WorkflowTransition } from './models/sales-order.model';
 import { FrappeAuthService } from './services/frappe-auth.service';
 import { FrappeCustomerInquiryService } from './services/frappe-customer-inquiry.service';
 
@@ -32,6 +33,7 @@ export class CustomerInquiryFormPage {
   private nextItemRowId = 0;
   private currentRecord: CustomerInquiryRecord | null = null;
   private preserveNextLoadError = false;
+  private workflowTransitionsRequest = 0;
   private defaults: Record<string, string | null> = {};
   private childDefaults: Record<string, string | null> = {};
 
@@ -40,6 +42,10 @@ export class CustomerInquiryFormPage {
   protected readonly customerSearch = signal('');
   protected readonly companies = signal<CustomerInquiryCompany[]>([]);
   protected readonly canChangeCompany = signal(false);
+  protected readonly workflow = signal<WorkflowConfiguration | null>(null);
+  protected readonly workflowTransitions = signal<WorkflowTransition[]>([]);
+  protected readonly workflowTransitionsLoading = signal(false);
+  protected readonly workflowError = signal('');
   protected readonly users = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly currencies = signal<CustomerInquiryLinkOption[]>([]);
   protected readonly paymentTerms = signal<CustomerInquiryLinkOption[]>([]);
@@ -84,6 +90,10 @@ export class CustomerInquiryFormPage {
   protected readonly inquiryName = signal('');
   protected readonly docstatus = signal(0);
   protected readonly status = signal('Open');
+  protected readonly workflowActive = computed(() => {
+    const config = this.workflow();
+    return Boolean(config && Number(config.is_active) === 1 && config.workflow_state_field.trim());
+  });
   protected readonly groupedItemTotals = computed(() => {
     const groups = new Map<string, {
       groupValue: string;
@@ -148,6 +158,7 @@ export class CustomerInquiryFormPage {
         this.customers.set(options.customers);
         this.companies.set(options.companies);
         this.canChangeCompany.set(options.canChangeCompany);
+        this.workflow.set(options.workflow);
         this.users.set(options.users);
         this.currencies.set(options.currencies);
         this.paymentTerms.set(options.paymentTerms);
@@ -333,7 +344,7 @@ export class CustomerInquiryFormPage {
     this.form.markAsDirty();
   }
 
-  protected save(submit: boolean): void {
+  protected save(submit: boolean, workflowAction = false): void {
     if (this.optionsLoading() || this.loading() || this.saving() || this.isReadOnly) {
       return;
     }
@@ -402,17 +413,37 @@ export class CustomerInquiryFormPage {
 
     this.saving.set(true);
     this.inquiries.saveInquiry(document, this.inquiryName() || undefined).pipe(
-      switchMap((saved) => submit
-        ? this.inquiries.submitInquiry(saved).pipe(
-          map((submitted) => ({ saved: submitted, submitError: '' })),
+      switchMap((saved) => {
+        if (submit) {
+          return this.inquiries.submitInquiry(saved).pipe(
+            map((submitted) => ({ saved: submitted, submitError: '' })),
+            catchError((error: unknown) => this.inquiries.getInquiry(saved.name).pipe(
+              map((draft) => ({
+                saved: draft,
+                submitError: `Draft was saved, but Frappe could not submit it: ${this.errorMessage(error)}`,
+              })),
+            )),
+          );
+        }
+        if (!workflowAction) {
+          return of({ saved, submitError: '' });
+        }
+        return this.inquiries.getWorkflowTransitions(saved.name).pipe(
+          switchMap((transitions) => {
+            const action = transitions[0]?.action;
+            return action
+              ? this.inquiries.applyWorkflowAction(saved.name, action)
+                .pipe(map((transitioned) => ({ saved: transitioned, submitError: '' })))
+              : throwError(() => new Error('No workflow action is currently available for this Customer Inquiry.'));
+          }),
           catchError((error: unknown) => this.inquiries.getInquiry(saved.name).pipe(
             map((draft) => ({
               saved: draft,
-              submitError: `Draft was saved, but Frappe could not submit it: ${this.errorMessage(error)}`,
+              submitError: `Draft was saved, but its workflow action could not be applied: ${this.errorMessage(error)}`,
             })),
           )),
-        )
-        : of({ saved, submitError: '' })),
+        );
+      }),
       map((result) => ({ ...result, wasCreated: !this.inquiryName() })),
       finalize(() => this.saving.set(false)),
       takeUntilDestroyed(this.destroyRef),
@@ -426,16 +457,57 @@ export class CustomerInquiryFormPage {
           ? `Customer Inquiry ${saved.name} remains a draft.`
           : submit
             ? `Customer Inquiry ${saved.name} submitted successfully.`
-            : `Customer Inquiry ${saved.name} saved successfully.`);
+            : workflowAction
+              ? `Customer Inquiry ${saved.name} workflow action completed.`
+              : `Customer Inquiry ${saved.name} saved successfully.`);
         this.error.set(submitError);
         if (wasCreated) {
           this.preserveNextLoadError = Boolean(submitError);
           void this.router.navigate(['/customer-inquiry', saved.name], { replaceUrl: true });
-        } else if (saved.docstatus !== 0 || submitError) {
+        } else if (saved.docstatus !== 0 || submitError || workflowAction) {
           this.loadRecord(saved.name, Boolean(submitError));
         }
       },
       error: (error: unknown) => this.error.set(this.errorMessage(error)),
+    });
+  }
+
+  protected submitInquiry(): void {
+    if (!this.workflowActive()) {
+      this.save(true);
+      return;
+    }
+    if (this.isReadOnly) {
+      const action = this.workflowTransitions()[0]?.action;
+      if (action) {
+        this.applyWorkflowAction(action);
+      }
+      return;
+    }
+    this.save(false, true);
+  }
+
+  private applyWorkflowAction(action: string): void {
+    const name = this.inquiryName();
+    if (!name || this.saving()) {
+      return;
+    }
+    this.saving.set(true);
+    this.workflowError.set('');
+    this.error.set('');
+    this.message.set('');
+    this.inquiries.applyWorkflowAction(name, action).pipe(
+      finalize(() => this.saving.set(false)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (record) => {
+        this.currentRecord = record;
+        this.docstatus.set(record.docstatus);
+        this.status.set(record.status || 'Open');
+        this.message.set(`Customer Inquiry ${record.name}: ${action} completed.`);
+        this.loadRecord(record.name, true);
+      },
+      error: (error: unknown) => this.workflowError.set(`Could not apply workflow action: ${this.errorMessage(error)}`),
     });
   }
 
@@ -539,6 +611,7 @@ export class CustomerInquiryFormPage {
         }
         this.applyCompanyFieldPermission();
         this.form.markAsPristine();
+        this.refreshWorkflowTransitions(record.name);
       },
       error: (error: unknown) => this.error.set(`Could not load Customer Inquiry ${name}: ${this.errorMessage(error)}`),
     });
@@ -585,11 +658,47 @@ export class CustomerInquiryFormPage {
     }
   }
 
+  private refreshWorkflowTransitions(name: string): void {
+    const requestId = ++this.workflowTransitionsRequest;
+    this.workflowError.set('');
+    if (!name || !this.workflowActive()) {
+      this.workflowTransitions.set([]);
+      this.workflowTransitionsLoading.set(false);
+      return;
+    }
+    this.workflowTransitionsLoading.set(true);
+    this.inquiries.getWorkflowTransitions(name).pipe(
+      finalize(() => {
+        if (requestId === this.workflowTransitionsRequest) {
+          this.workflowTransitionsLoading.set(false);
+        }
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (transitions) => {
+        if (requestId === this.workflowTransitionsRequest) {
+          this.workflowTransitions.set(transitions);
+        }
+      },
+      error: (error: unknown) => {
+        if (requestId !== this.workflowTransitionsRequest) {
+          return;
+        }
+        this.workflowTransitions.set([]);
+        this.workflowError.set(`Could not load workflow actions: ${this.errorMessage(error)}`);
+      },
+    });
+  }
+
   private resetNewInquiry(): void {
+    this.workflowTransitionsRequest++;
     this.currentRecord = null;
     this.inquiryName.set('');
     this.docstatus.set(0);
     this.status.set('Open');
+    this.workflowTransitions.set([]);
+    this.workflowTransitionsLoading.set(false);
+    this.workflowError.set('');
     this.message.set('');
     this.error.set('');
     this.form.enable({ emitEvent: false });

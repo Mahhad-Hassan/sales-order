@@ -423,11 +423,31 @@
 
           <div class="flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-[#e3eae6] bg-white p-4 shadow-sm">
             <button class="toolbar-back min-h-11 rounded-[10px] border px-5 py-2 text-sm font-bold" type="button" [disabled]="saving()" routerLink="/customer-inquiries">Back to Records</button>
-            @if (docstatus() === 1) {
+            @if (workflowActive()) {
+              @if (!isReadOnly) {
+                <button class="toolbar-back min-h-11 rounded-[10px] border px-5 py-2 text-sm font-bold" type="submit" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Save Draft' }}</button>
+              }
+              @if (workflowTransitionsLoading()) {
+                <button class="primary-action min-h-11" type="button" disabled>Loading workflow...</button>
+              } @else if (workflowTransitions().length) {
+                <button class="primary-action min-h-11" type="button" [disabled]="saving()" (click)="submitInquiry()">
+                  {{ saving() ? 'Applying...' : workflowTransitions()[0].action }}
+                </button>
+              } @else if (!inquiryName()) {
+                <button class="primary-action min-h-11" type="button" [disabled]="saving()" (click)="submitInquiry()">
+                  {{ saving() ? 'Saving...' : 'Save & Continue' }}
+                </button>
+              } @else if (!workflowError()) {
+                <p class="m-0 text-sm text-[#6d7d77]" role="status">No workflow actions are currently available.</p>
+              }
+            } @else if (docstatus() === 1) {
               <button class="remove-row-button min-h-11 px-5" type="button" [disabled]="saving()" (click)="cancelInquiry()">{{ saving() ? 'Cancelling...' : 'Cancel Inquiry' }}</button>
             } @else if (!isReadOnly) {
               <button class="toolbar-back min-h-11 rounded-[10px] border px-5 py-2 text-sm font-bold" type="submit" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Save Draft' }}</button>
-              <button class="primary-action min-h-11" type="button" [disabled]="saving()" (click)="save(true)">{{ saving() ? 'Submitting...' : 'Submit Inquiry' }}</button>
+              <button class="primary-action min-h-11" type="button" [disabled]="saving()" (click)="submitInquiry()">{{ saving() ? 'Submitting...' : 'Submit Inquiry' }}</button>
+            }
+            @if (workflowError()) {
+              <p class="m-0 w-full text-sm text-[#8b3c2c]" role="alert">{{ workflowError() }}</p>
             }
           </div>
         </form>
