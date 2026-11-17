@@ -10,6 +10,7 @@
     @if (currentUser) {
       <div class="absolute right-5 flex items-center gap-3 max-[580px]:right-3 max-[580px]:gap-2">
         <span class="text-sm font-semibold text-[#24765f] max-[580px]:hidden">{{ currentUser }}</span>
+        <a class="rounded-lg border border-[#d6e0da] bg-white px-3 py-1 text-sm font-bold text-[#24765f] no-underline hover:bg-[#f3f8f5]" routerLink="/home" aria-label="Go to home">Home</a>
         <button
           class="rounded-lg border border-[#e0e8e4] bg-white px-3 py-1 text-sm font-bold text-[#a34539] hover:bg-[#fff7f6]"
           type="button"

@@ -10,6 +10,7 @@
     @if (currentUser) {
       <div class="sales-order-list-user absolute right-5 flex items-center gap-3 max-[580px]:right-3 max-[580px]:gap-2">
         <span class="text-sm font-semibold max-[580px]:hidden">{{ currentUser }}</span>
+        <a class="rounded-[10px] border border-[#d6e0da] bg-white px-3 py-2 text-sm font-bold text-[#24765f] no-underline hover:bg-[#f3f8f5]" routerLink="/home" aria-label="Go to home">Home</a>
         <button
           class="sign-out-button rounded-[10px] border bg-white px-3 py-2 text-sm font-bold"
           type="button"
