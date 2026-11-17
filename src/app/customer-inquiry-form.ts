@@ -54,6 +54,7 @@ export class CustomerInquiryFormPage {
   protected readonly itemDropdownRowId = signal<number | null>(null);
   protected readonly itemSearch = signal('');
   protected readonly itemDropdownPosition = signal<{ top: number; left: number; width: number } | null>(null);
+  protected readonly editingItemRowId = signal<number | null>(null);
   protected readonly itemDropdownRowIndex = computed(
     () => this.itemRows().findIndex((row) => row.rowId === this.itemDropdownRowId()),
   );
@@ -289,6 +290,19 @@ export class CustomerInquiryFormPage {
     this.itemSearch.set('');
     this.itemDropdownPosition.set(null);
     this.itemDropdownAnchor = null;
+  }
+
+  protected openItemEditor(rowId: number): void {
+    if (this.isReadOnly) {
+      return;
+    }
+    this.closeItemDropdown();
+    this.editingItemRowId.set(rowId);
+  }
+
+  protected closeItemEditor(): void {
+    this.editingItemRowId.set(null);
+    this.closeItemDropdown();
   }
 
   protected setItemSearch(event: Event): void {

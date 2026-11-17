@@ -225,21 +225,34 @@
                         </select>
                       </td>
                       @if (!isReadOnly) {
-                        <td class="w-14 p-2 text-center align-middle">
-                          <button
-                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e8bdb7] bg-white text-[#a34539] transition-colors hover:bg-[#fff7f6] disabled:cursor-not-allowed disabled:opacity-50"
-                            type="button"
-                            [attr.aria-label]="'Remove item row ' + (rowIndex + 1)"
-                            [disabled]="itemRows().length === 1"
-                            (click)="removeItem(rowIndex)"
-                          >
-                            <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                              <path d="M3 6h18" />
-                              <path d="M8 6V4h8v2" />
-                              <path d="m19 6-1 14H6L5 6" />
-                              <path d="M10 11v5M14 11v5" />
-                            </svg>
-                          </button>
+                        <td class="w-24 p-2 text-center align-middle">
+                          <div class="flex items-center justify-center gap-1">
+                            <button
+                              class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#cbd9d1] bg-white text-[#24765f] transition-colors hover:bg-[#f3f8f5]"
+                              type="button"
+                              [attr.aria-label]="'Edit item row ' + (rowIndex + 1)"
+                              (click)="openItemEditor(row.rowId)"
+                            >
+                              <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="m14 5 5 5" />
+                                <path d="M4 20l4.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L4 20Z" />
+                              </svg>
+                            </button>
+                            <button
+                              class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e8bdb7] bg-white text-[#a34539] transition-colors hover:bg-[#fff7f6] disabled:cursor-not-allowed disabled:opacity-50"
+                              type="button"
+                              [attr.aria-label]="'Remove item row ' + (rowIndex + 1)"
+                              [disabled]="itemRows().length === 1"
+                              (click)="removeItem(rowIndex)"
+                            >
+                              <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 6h18" />
+                                <path d="M8 6V4h8v2" />
+                                <path d="m19 6-1 14H6L5 6" />
+                                <path d="M10 11v5M14 11v5" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       }
                     </tr>
@@ -325,6 +338,101 @@
               </div>
             </section>
           </section>
+
+          @if (editingItemRowId() !== null) {
+            @for (row of itemRows(); track row.rowId; let rowIndex = $index) {
+              @if (row.rowId === editingItemRowId()) {
+                <div
+                  class="fixed inset-0 z-[40] flex items-center justify-center overflow-y-auto bg-[#10251f]/45 p-4"
+                  (click)="closeItemEditor()"
+                  (keydown.escape)="closeItemEditor()"
+                >
+                  <section
+                    class="my-auto w-full max-w-3xl rounded-2xl border border-[#e3eae6] bg-white p-5 shadow-2xl sm:p-6"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="requested-item-editor-title"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <div class="mb-5 flex items-start justify-between gap-4">
+                      <div>
+                        <h2 id="requested-item-editor-title" class="m-0 text-lg font-extrabold text-[#14332b]">Edit Requested Item</h2>
+                        <p class="mb-0 mt-1 text-sm text-[#6d7d77]">Update all fields for this item row.</p>
+                      </div>
+                      <button
+                        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#e3eae6] bg-white text-[#344a42] hover:bg-[#f3f8f5]"
+                        type="button"
+                        aria-label="Close item editor"
+                        (click)="closeItemEditor()"
+                      >
+                        <span aria-hidden="true" class="text-xl leading-none">×</span>
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <label class="form-field sm:col-span-2">
+                        <span class="form-field-label">Item *</span>
+                        <button
+                          class="customer-select relative flex min-h-[44px] w-full items-center justify-between rounded-[10px] border px-3 text-left text-sm font-normal cursor-pointer"
+                          type="button"
+                          aria-haspopup="listbox"
+                          [attr.aria-expanded]="itemDropdownRowId() === row.rowId"
+                          (click)="toggleItemDropdown(row.rowId, $event)"
+                        >
+                          <span class="truncate">{{ row.item_code ? (row.item_description || row.item_code) : 'Select item...' }}</span>
+                          <span class="absolute right-3 h-0 w-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-[currentColor]" aria-hidden="true"></span>
+                        </button>
+                      </label>
+                      <label class="form-field sm:col-span-2">
+                        <span class="form-field-label">Description</span>
+                        <input class="form-input" [value]="row.item_description" (input)="setInquiryField(rowIndex, 'item_description', $event)" />
+                      </label>
+                      <label class="form-field">
+                        <span class="form-field-label">Qty *</span>
+                        <input class="form-input" type="number" min="0.001" step="any" [value]="row.qty" (input)="setInquiryField(rowIndex, 'qty', $event)" />
+                      </label>
+                      <label class="form-field">
+                        <span class="form-field-label">UOM</span>
+                        <select class="form-input" (change)="setInquiryField(rowIndex, 'uom', $event)">
+                          <option value="" [selected]="!row.uom">Select UOM...</option>
+                          @for (uom of uoms(); track uom.name) {
+                            <option [value]="uom.name" [selected]="uom.name === row.uom">{{ uom.name }}</option>
+                          }
+                        </select>
+                      </label>
+                      <label class="form-field">
+                        <span class="form-field-label">Container No</span>
+                        <input class="form-input" [value]="row.container_no" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
+                      </label>
+                      <label class="form-field">
+                        <span class="form-field-label">Target Price</span>
+                        <input class="form-input" type="number" min="0" step="any" [value]="row.target_price" (input)="setInquiryField(rowIndex, 'target_price', $event)" />
+                      </label>
+                      <label class="form-field">
+                        <span class="form-field-label">Preferred Brand</span>
+                        <input class="form-input" [value]="row.preferred_brand" (input)="setInquiryField(rowIndex, 'preferred_brand', $event)" />
+                      </label>
+                      <label class="form-field">
+                        <span class="form-field-label">Shipment Load</span>
+                        <select class="form-input" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
+                          <option value="" [selected]="!row.shipment_load">Select shipment load...</option>
+                          @for (option of shipmentLoads(); track option) {
+                            <option [value]="option" [selected]="option === row.shipment_load">{{ option }}</option>
+                          }
+                        </select>
+                      </label>
+                      <label class="form-field sm:col-span-2">
+                        <span class="form-field-label">Remarks</span>
+                        <textarea class="form-input min-h-24 resize-y" [value]="row.remarks" (input)="setInquiryField(rowIndex, 'remarks', $event)"></textarea>
+                      </label>
+                    </div>
+                    <div class="mt-5 flex justify-end">
+                      <button class="add-row-button max-w-32" type="button" (click)="closeItemEditor()">Done</button>
+                    </div>
+                  </section>
+                </div>
+              }
+            }
+          }
 
           <section class="form-card" aria-label="Shipment details">
             <h2 class="form-section-title"><i aria-hidden="true"></i>Shipment Details</h2>
