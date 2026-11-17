@@ -530,7 +530,6 @@
           }
 
           <div class="flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-[#e3eae6] bg-white p-4 shadow-sm">
-            <button class="toolbar-back min-h-11 rounded-[10px] border px-5 py-2 text-sm font-bold" type="button" [disabled]="saving()" routerLink="/customer-inquiries">Back to Records</button>
             @if (workflowActive()) {
               @if (!isReadOnly) {
                 <button class="toolbar-back min-h-11 rounded-[10px] border px-5 py-2 text-sm font-bold" type="submit" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Save Draft' }}</button>
