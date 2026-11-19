@@ -7,6 +7,9 @@ export interface DeliveryNoteCompany {
 export interface DeliveryNoteCustomer {
   name: string;
   customer_name?: string | null;
+  customer_name_urdu?: string | null;
+  custom_urdu_name?: string | null;
+  mobile_no?: string | null;
   disabled?: number;
 }
 
@@ -14,6 +17,30 @@ export interface DeliveryNoteItemOption {
   item_code: string;
   item_name: string;
   stock_uom: string;
+  custom_urdu_name?: string | null;
+  item_group?: string | null;
+  custom_package_type?: string | null;
+}
+
+export interface DeliveryNoteItemGroup {
+  name: string;
+  parent_item_group?: string | null;
+  custom_urdu_name?: string | null;
+}
+
+export interface DeliveryNotePackageType {
+  name: string;
+  package_name?: string | null;
+  package_name_urdu?: string | null;
+}
+
+export interface DeliveryNoteTransporterOption {
+  name: string;
+  transporter_name?: string | null;
+  supplier_name?: string | null;
+  custom_urdu_name?: string | null;
+  from_location?: string | null;
+  from_location_urdu?: string | null;
 }
 
 export interface DeliveryNoteItemUom {
@@ -62,6 +89,9 @@ export interface DeliveryNoteItemRecord extends Record<string, unknown> {
   warehouse?: string | null;
   rate?: number;
   amount?: number;
+  total_qty?: number;
+  custom_package_count?: number | string | null;
+  custom_package_type?: string | null;
 }
 
 export interface DeliveryNoteRecord extends Record<string, unknown> {
@@ -87,6 +117,14 @@ export interface DeliveryNoteRecord extends Record<string, unknown> {
   driver_name?: string | null;
   po_no?: string | null;
   po_date?: string | null;
+  remarks?: string | null;
+  custom_reference_no?: string | null;
+  custom_adda_name?: string | null;
+  custom_for_transporter?: string | null;
+  custom_party_name?: string | null;
+  custom_contact_number?: string | null;
+  custom_rent_amount?: number | string | null;
+  custom_rent_status?: string | null;
   items: DeliveryNoteItemRecord[];
 }
 
@@ -99,7 +137,10 @@ export interface DeliveryNoteDraftItem {
   uomError: string;
   conversion_factor: number;
   qty: string;
+  weight: string;
   warehouse: string;
+  packageCount: string;
+  packageType: string;
   rate: string;
   amount: string;
   rateLoading: boolean;

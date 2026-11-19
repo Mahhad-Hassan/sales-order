@@ -1,15 +1,18 @@
 import { Injectable, inject } from '@angular/core';
-import { EMPTY, Observable, expand, forkJoin, map, of, reduce, switchMap, throwError } from 'rxjs';
+import { EMPTY, Observable, catchError, expand, forkJoin, map, of, reduce, switchMap, throwError } from 'rxjs';
 import { FrappeDocTypeMetadata } from '../models/frappe-api.model';
 import {
   DeliveryNoteCompany,
   DeliveryNoteCustomer,
   DeliveryNoteItemPrice,
+  DeliveryNoteItemGroup,
   DeliveryNoteItemOption,
   DeliveryNoteItemUom,
+  DeliveryNotePackageType,
   DeliveryNotePartyOption,
   DeliveryNotePriceList,
   DeliveryNoteRecord,
+  DeliveryNoteTransporterOption,
   DeliveryNoteWarehouse,
 } from '../models/delivery-note.model';
 import { FrappeApiService } from './frappe-api.service';
@@ -25,6 +28,10 @@ export class FrappeDeliveryNoteService {
     canChangeCompany: boolean;
     customers: DeliveryNoteCustomer[];
     items: DeliveryNoteItemOption[];
+    itemGroups: DeliveryNoteItemGroup[];
+    packageTypes: DeliveryNotePackageType[];
+    transporters: DeliveryNoteTransporterOption[];
+    printOptionsWarning: string;
     priceLists: DeliveryNotePriceList[];
     suppliers: DeliveryNotePartyOption[];
     drivers: DeliveryNotePartyOption[];
@@ -34,15 +41,39 @@ export class FrappeDeliveryNoteService {
     return forkJoin({
       companies: this.getAllPages<DeliveryNoteCompany>('Company', ['name', 'default_currency', 'default_warehouse'], []),
       companyAccess: this.companyAccess.getAccess(currentUser, 'Delivery Note'),
-      customers: this.getAllPages<DeliveryNoteCustomer>(
+      customers: this.getAllPagesWithOptionalFields<DeliveryNoteCustomer>(
         'Customer',
-        ['name', 'customer_name', 'disabled'],
+        ['name', 'customer_name', 'mobile_no', 'disabled'],
+        ['custom_urdu_name'],
         [['disabled', '=', 0]],
       ),
-      items: this.getAllPages<DeliveryNoteItemOption>(
+      items: this.getAllPagesWithOptionalFields<DeliveryNoteItemOption>(
         'Item',
-        ['item_code', 'item_name', 'stock_uom'],
+        ['item_code', 'item_name', 'stock_uom', 'item_group', 'custom_package_type'],
+        ['custom_urdu_name'],
         [['disabled', '=', 0], ['is_stock_item', '=', 1]],
+      ),
+      itemGroups: this.getOptionalAllPages<DeliveryNoteItemGroup>(
+        'Item Group',
+        ['name', 'parent_item_group'],
+        ['custom_urdu_name'],
+        [],
+      ),
+      packageTypes: this.getOptionalAllPages<DeliveryNotePackageType>(
+        'Package Type',
+        ['name', 'package_name'],
+        ['package_name_urdu'],
+        [],
+      ),
+      transporters: this.getOptionalAllPages<DeliveryNoteTransporterOption>(
+        'Transporter List',
+        ['name', 'transporter_name', 'from_location'],
+        [
+          'transporter_name.custom_urdu_name as custom_urdu_name',
+          'transporter_name.supplier_name as supplier_name',
+          'from_location.city_name_urdu as from_location_urdu',
+        ],
+        [],
       ),
       priceLists: this.getAllPages<DeliveryNotePriceList>(
         'Price List',
@@ -61,11 +92,19 @@ export class FrappeDeliveryNoteService {
         [['is_group', '=', 0], ['disabled', '=', 0]],
       ),
       metadata: this.api.getDocument<FrappeDocTypeMetadata>('DocType', 'Delivery Note'),
-    }).pipe(map(({ companyAccess, ...options }) => ({
+    }).pipe(map(({ companyAccess, itemGroups, packageTypes, transporters, ...options }) => ({
       ...options,
       companies: companyAccess.allowedCompanyNames
         ? options.companies.filter((company) => companyAccess.allowedCompanyNames?.includes(company.name))
         : options.companies,
+      itemGroups: itemGroups.records,
+      packageTypes: packageTypes.records,
+      transporters: transporters.records,
+      printOptionsWarning: [
+        itemGroups.failed ? 'Item Group' : '',
+        packageTypes.failed ? 'Package Type' : '',
+        transporters.failed ? 'Transporter List' : '',
+      ].filter(Boolean).join(', '),
       canChangeCompany: companyAccess.canChangeCompany,
     })));
   }
@@ -177,6 +216,42 @@ export class FrappeDeliveryNoteService {
         records.push(...page);
         return records;
       }, [] as T[]),
+    );
+  }
+
+  private getAllPagesWithOptionalFields<T>(
+    doctype: string,
+    fields: string[],
+    optionalFields: string[],
+    filters: unknown[][],
+  ): Observable<T[]> {
+    const pageSize = 500;
+    const getPage = (offset: number) => this.api.getList<T>(
+      doctype,
+      [...fields, ...optionalFields],
+      filters,
+      pageSize,
+      offset,
+    ).pipe(catchError(() => this.api.getList<T>(doctype, fields, filters, pageSize, offset)));
+
+    return getPage(0).pipe(
+      expand((page, index) => page.length === pageSize ? getPage((index + 1) * pageSize) : EMPTY),
+      reduce((records, page) => {
+        records.push(...page);
+        return records;
+      }, [] as T[]),
+    );
+  }
+
+  private getOptionalAllPages<T>(
+    doctype: string,
+    fields: string[],
+    optionalFields: string[],
+    filters: unknown[][],
+  ): Observable<{ records: T[]; failed: boolean }> {
+    return this.getAllPagesWithOptionalFields<T>(doctype, fields, optionalFields, filters).pipe(
+      map((records) => ({ records, failed: false })),
+      catchError(() => of({ records: [] as T[], failed: true })),
     );
   }
 }

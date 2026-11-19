@@ -5,12 +5,16 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, map, of, switchMap } from 'rxjs';
 import {
   DeliveryNoteCompany,
+  DeliveryNoteCustomer,
   DeliveryNoteDraftItem,
+  DeliveryNoteItemGroup,
   DeliveryNoteItemOption,
+  DeliveryNotePackageType,
   DeliveryNotePriceList,
   DeliveryNoteRecord,
   DeliveryNoteItemUom,
   DeliveryNoteWarehouse,
+  DeliveryNoteTransporterOption,
 } from './models/delivery-note.model';
 import { DeliveryNotePartyOption } from './models/delivery-note.model';
 import { FrappeAuthService } from './services/frappe-auth.service';
@@ -38,8 +42,12 @@ export class DeliveryNoteFormPage {
 
   protected readonly companies = signal<DeliveryNoteCompany[]>([]);
   protected readonly canChangeCompany = signal(false);
-  protected readonly customers = signal<Array<{ name: string; customer_name?: string | null }>>([]);
+  protected readonly customers = signal<DeliveryNoteCustomer[]>([]);
   protected readonly items = signal<DeliveryNoteItemOption[]>([]);
+  protected readonly itemGroups = signal<DeliveryNoteItemGroup[]>([]);
+  protected readonly packageTypes = signal<DeliveryNotePackageType[]>([]);
+  protected readonly transporters = signal<DeliveryNoteTransporterOption[]>([]);
+  protected readonly printOptionsWarning = signal('');
   protected readonly priceLists = signal<DeliveryNotePriceList[]>([]);
   protected readonly suppliers = signal<DeliveryNotePartyOption[]>([]);
   protected readonly drivers = signal<DeliveryNotePartyOption[]>([]);
@@ -74,7 +82,10 @@ export class DeliveryNoteFormPage {
     company: ['', Validators.required],
     warehouse: [''],
     priceList: [''],
+    adda: [''],
+    forTransporter: [''],
     terms: [''],
+    remarks: [''],
     transporter: [''],
     lrNo: [''],
     lrDate: [''],
@@ -83,6 +94,9 @@ export class DeliveryNoteFormPage {
     driverName: [''],
     poNo: [''],
     poDate: [''],
+    contact: [''],
+    rentAmount: [''],
+    rentStatus: [''],
   });
 
   constructor() {
@@ -92,6 +106,12 @@ export class DeliveryNoteFormPage {
         this.canChangeCompany.set(options.canChangeCompany);
         this.customers.set(options.customers);
         this.items.set(options.items);
+        this.itemGroups.set(options.itemGroups);
+        this.packageTypes.set(options.packageTypes);
+        this.transporters.set(options.transporters);
+        this.printOptionsWarning.set(options.printOptionsWarning
+          ? `Some Ada Parchi print lookups could not be loaded: ${options.printOptionsWarning}.`
+          : '');
         this.priceLists.set(options.priceLists);
         this.suppliers.set(options.suppliers);
         this.drivers.set(options.drivers);
@@ -199,7 +219,11 @@ export class DeliveryNoteFormPage {
     this.itemRows.update((rows) => rows.filter((_, rowIndex) => rowIndex !== index));
   }
 
-  protected setItemField(index: number, field: 'item_code' | 'uom' | 'qty' | 'warehouse' | 'rate', event: Event): void {
+  protected setItemField(
+    index: number,
+    field: 'item_code' | 'uom' | 'qty' | 'warehouse' | 'rate' | 'packageCount' | 'packageType',
+    event: Event,
+  ): void {
     const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
     const row = this.itemRows()[index];
     if (!row) {
@@ -221,6 +245,9 @@ export class DeliveryNoteFormPage {
         updated.uomLoading = Boolean(item);
         updated.uomError = '';
         updated.conversion_factor = 1;
+        updated.weight = this.calculateItemWeight(updated.qty, 1);
+        updated.packageCount = '';
+        updated.packageType = item?.custom_package_type ?? '';
         updated.rate = '';
         updated.amount = '';
         updated.rateError = '';
@@ -228,6 +255,7 @@ export class DeliveryNoteFormPage {
       } else if (field === 'uom') {
         const selectedUom = row.uomOptions.find((option) => option.uom === value);
         updated.conversion_factor = selectedUom?.conversion_factor ?? 1;
+        updated.weight = this.calculateItemWeight(updated.qty, updated.conversion_factor);
         updated.rate = '';
         updated.amount = '';
         updated.rateLoading = Boolean(value);
@@ -239,6 +267,7 @@ export class DeliveryNoteFormPage {
         updated.amount = this.calculateItemAmount(updated.qty, value);
       } else if (field === 'qty') {
         updated.amount = this.calculateItemAmount(value, updated.rate);
+        updated.weight = this.calculateItemWeight(value, updated.conversion_factor);
       }
       return updated;
     }));
@@ -309,6 +338,9 @@ export class DeliveryNoteFormPage {
         uom: row.uom,
         stock_uom: item.stock_uom,
         conversion_factor: row.conversion_factor,
+        total_qty: Number(row.weight) || quantity * row.conversion_factor,
+        custom_package_count: Number(row.packageCount) || 0,
+        custom_package_type: row.packageType || '',
         warehouse: row.warehouse || this.form.controls.warehouse.value || null,
         rate,
         amount: quantity * rate,
@@ -320,6 +352,7 @@ export class DeliveryNoteFormPage {
     }
 
     this.saving.set(true);
+    const wasCreated = !this.orderName();
     this.deliveryNotes.getExchangeRate(priceList.currency, company.default_currency, this.form.controls.postingDate.value).pipe(
       switchMap((priceListRate) => {
         const value = this.form.getRawValue();
@@ -335,30 +368,47 @@ export class DeliveryNoteFormPage {
           price_list_currency: priceList.currency,
           plc_conversion_rate: priceListRate,
           set_warehouse: value.warehouse || null,
+          custom_reference_no: this.orderName(),
+          custom_adda_name: value.adda || '',
+          custom_for_transporter: value.forTransporter || '',
+          custom_party_name: value.customer,
+          custom_contact_number: value.contact || '',
+          custom_rent_amount: Number(value.rentAmount) || 0,
+          custom_rent_status: this.rentStatusToFrappe(value.rentStatus),
+          vehicle_no: value.vehicleNo || '',
+          driver_name: value.driverName || '',
+          lr_no: value.lrNo || '',
           items: validRows,
           terms: value.terms || null,
+          remarks: value.remarks || '',
           transporter: value.transporter || null,
-          lr_no: value.lrNo || null,
           lr_date: value.lrDate || null,
-          vehicle_no: value.vehicleNo || null,
           driver: value.driver || null,
-          driver_name: value.driverName || null,
           po_no: value.poNo || null,
           po_date: value.poDate || null,
         };
         return this.deliveryNotes.saveDeliveryNote(document, this.orderName() || undefined).pipe(
-          switchMap((saved) => submit
-            ? this.deliveryNotes.submitDeliveryNote(saved).pipe(
-              map((submitted) => ({ saved: submitted, submitError: '' })),
-              catchError((error: unknown) => this.deliveryNotes.getDeliveryNote(saved.name).pipe(
-                map((draft) => ({
-                  saved: draft,
-                  submitError: `Draft was saved, but Frappe could not submit it: ${this.errorMessage(error)}`,
-                })),
-              )),
-            )
-            : of({ saved, submitError: '' })),
-          map((result) => ({ ...result, wasCreated: !this.orderName() })),
+          switchMap((saved) => {
+            const saveReference = wasCreated && saved.custom_reference_no !== saved.name
+              ? this.deliveryNotes.saveDeliveryNote({ custom_reference_no: saved.name }, saved.name).pipe(
+                switchMap(() => this.deliveryNotes.getDeliveryNote(saved.name)),
+              )
+              : of(saved);
+            return saveReference.pipe(
+              switchMap((documentToSubmit) => submit
+                ? this.deliveryNotes.submitDeliveryNote(documentToSubmit).pipe(
+                  map((submitted) => ({ saved: submitted, submitError: '' })),
+                  catchError((error: unknown) => this.deliveryNotes.getDeliveryNote(documentToSubmit.name).pipe(
+                    map((draft) => ({
+                      saved: draft,
+                      submitError: `Draft was saved, but Frappe could not submit it: ${this.errorMessage(error)}`,
+                    })),
+                  )),
+                )
+                : of({ saved: documentToSubmit, submitError: '' })),
+              map((result) => ({ ...result, wasCreated })),
+            );
+          }),
         );
       }),
       finalize(() => this.saving.set(false)),
@@ -373,6 +423,7 @@ export class DeliveryNoteFormPage {
           : submit
             ? `Delivery Note ${saved.name} submitted successfully.`
             : `Delivery Note ${saved.name} saved successfully.`);
+        this.form.controls.remarks.setValue(saved.remarks ?? this.form.controls.remarks.value, { emitEvent: false });
         this.error.set(submitError);
         if (wasCreated) {
           void this.router.navigate(['/delivery-note', saved.name], { replaceUrl: true });
@@ -410,6 +461,9 @@ export class DeliveryNoteFormPage {
           warehouse: record.set_warehouse ?? '',
           priceList: record.selling_price_list ?? this.standardSellingPriceList()?.name ?? '',
           terms: record.terms ?? '',
+          remarks: record.remarks ?? '',
+          adda: record.custom_adda_name ?? '',
+          forTransporter: record.custom_for_transporter ?? '',
           transporter: record.transporter ?? '',
           lrNo: record.lr_no ?? '',
           lrDate: record.lr_date ?? '',
@@ -417,6 +471,9 @@ export class DeliveryNoteFormPage {
           driverName: record.driver_name ?? '',
           poNo: record.po_no ?? '',
           poDate: record.po_date ?? '',
+          contact: record.custom_contact_number ?? '',
+          rentAmount: record.custom_rent_amount == null ? '' : String(record.custom_rent_amount),
+          rentStatus: this.rentStatusFromFrappe(record.custom_rent_status),
         }, { emitEvent: false });
         this.selectedCompany.set(record.company);
         if (record.transporter && !this.suppliers().some((supplier) => supplier.name === record.transporter)) {
@@ -435,7 +492,10 @@ export class DeliveryNoteFormPage {
           uomError: '',
           conversion_factor: item.conversion_factor ?? 1,
           qty: String(item.qty ?? ''),
+          weight: String(item.total_qty ?? Number(item.qty ?? 0) * Number(item.conversion_factor ?? 1)),
           warehouse: item.warehouse ?? '',
+          packageCount: item.custom_package_count == null ? '' : String(item.custom_package_count),
+          packageType: item.custom_package_type ?? '',
           rate: item.rate === undefined ? '' : String(item.rate),
           amount: item.amount === undefined
             ? this.calculateItemAmount(String(item.qty ?? ''), item.rate === undefined ? '' : String(item.rate))
@@ -476,7 +536,10 @@ export class DeliveryNoteFormPage {
       company: '',
       warehouse: '',
       priceList: this.standardSellingPriceList()?.name ?? '',
+      adda: '',
+      forTransporter: '',
       terms: '',
+      remarks: '',
       transporter: '',
       lrNo: '',
       lrDate: '',
@@ -485,6 +548,9 @@ export class DeliveryNoteFormPage {
       driverName: '',
       poNo: '',
       poDate: '',
+      contact: '',
+      rentAmount: '',
+      rentStatus: '',
     }, { emitEvent: false });
     this.selectedCompany.set('');
     this.itemRows.set([this.emptyItem()]);
@@ -601,6 +667,10 @@ export class DeliveryNoteFormPage {
             uomOptions: [...uomOptions.values()],
             uomLoading: false,
             conversion_factor: uomOptions.get(row.uom)?.conversion_factor ?? row.conversion_factor,
+            weight: this.calculateItemWeight(
+              row.qty,
+              uomOptions.get(row.uom)?.conversion_factor ?? row.conversion_factor,
+            ),
           }
           : row));
       },
@@ -647,7 +717,10 @@ export class DeliveryNoteFormPage {
       uomError: '',
       conversion_factor: 1,
       qty: '',
+      weight: '',
       warehouse: '',
+      packageCount: '',
+      packageType: '',
       rate: '',
       amount: '',
       rateLoading: false,
@@ -662,6 +735,166 @@ export class DeliveryNoteFormPage {
       return '';
     }
     return String(parsedQuantity * parsedRate);
+  }
+
+  protected printAdaParchi(): void {
+      const printWindow = window.open('', '_blank', 'width=900,height=1000');
+      if (!printWindow) {
+        this.error.set('The Ada Parchi print window was blocked. Allow pop-ups and try again.');
+        return;
+      }
+
+      const escapeHtml = (value: unknown): string => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+      const formatNumber = (value: unknown): string => {
+        if (value === null || value === undefined || value === '') {
+          return '';
+        }
+        const number = Number(value);
+        return Number.isFinite(number)
+          ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(number)
+          : '';
+      };
+      const formatDate = (value: string): string => {
+        if (!value) {
+          return '';
+        }
+        const [year, month, day] = value.split('-').map(Number);
+        return year && month && day
+          ? new Intl.DateTimeFormat('en-GB').format(new Date(year, month - 1, day))
+          : value;
+      };
+      const customer = this.customers().find((option) => option.name === this.form.controls.customer.value);
+      const selectedTransporter = (name: string) => this.transporters().find((option) => option.name === name);
+      const transporterLabel = (name: string): string => {
+        const option = selectedTransporter(name);
+        return option?.custom_urdu_name || option?.supplier_name || option?.transporter_name || name;
+      };
+      const addaName = this.form.controls.adda.value;
+      const forName = this.form.controls.forTransporter.value;
+      const forOption = selectedTransporter(forName);
+      const forLabel = forOption
+        ? `${forOption.from_location_urdu || forOption.from_location || ''}${forOption.from_location_urdu || forOption.from_location ? ` (${transporterLabel(forName)})` : transporterLabel(forName)}`
+        : forName;
+      const customerName = customer?.customer_name_urdu
+        || customer?.custom_urdu_name
+        || customer?.customer_name
+        || this.form.controls.customer.value;
+      const rows = this.itemRows().filter((row) => row.item_code || row.qty || row.packageCount);
+      const totalPackages = rows.reduce((total, row) => total + (Number(row.packageCount) || 0), 0);
+      const totalWeight = rows.reduce((total, row) => total + (Number(row.weight) || 0), 0);
+      const rowsHtml = rows.map((row) => {
+        const item = this.selectedItem(row.item_code);
+        const group = this.itemGroups().find((option) => option.name === item?.item_group);
+        const packageType = this.packageTypes().find((option) => option.name === row.packageType);
+        return `<tr>
+          <td class="number">${escapeHtml(formatNumber(row.packageCount))}</td>
+          <td>${escapeHtml(packageType?.package_name_urdu || packageType?.package_name || row.packageType)}</td>
+          <td>${escapeHtml(group?.custom_urdu_name || group?.parent_item_group || group?.name || '')}</td>
+          <td class="number">${escapeHtml(formatNumber(row.weight))}</td>
+        </tr>`;
+      }).join('');
+      const rentStatus = this.form.controls.rentStatus.value === 'paid'
+        ? 'ادا کر دیا گیا ہے'
+        : this.form.controls.rentStatus.value === 'pending'
+          ? 'ادا کرنا ہے'
+          : '';
+      const documentNumber = this.orderName();
+      const documentDate = this.form.controls.postingDate.value;
+      const html = `<!doctype html>
+        <html lang="ur" dir="rtl">
+        <head>
+          <meta charset="utf-8">
+          <title>اڈہ پرچی ${escapeHtml(documentNumber)}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+          <style>
+            @page { size: A4 portrait; margin: 12mm; }
+            * { box-sizing: border-box; }
+            body { color: #111; font-family: "Noto Nastaliq Urdu", "Noto Naskh Arabic", serif; font-size: 15px; line-height: 1.7; }
+            .sheet { width: 100%; }
+            h1 { margin: 0 0 12px; text-align: center; font-size: 25px; }
+            .info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin-bottom: 16px; }
+            .field { display: flex; gap: 6px; min-height: 28px; }
+            .label { font-weight: 700; white-space: nowrap; }
+            .value { flex: 1; min-height: 24px; border-bottom: 1px solid #111; }
+            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            th, td { border: 1px solid #111; padding: 5px 8px; text-align: center; }
+            th { background: #f0f0f0; }
+            .number { direction: ltr; text-align: right; font-family: Arial, sans-serif; }
+            tfoot { font-weight: 700; }
+            .totals { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+            .rent { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 12px; }
+            .rent span { border: 1px solid #111; padding: 3px 8px; }
+            .note { margin: 12px 0; }
+            .extra { display: flex; gap: 8px; }
+            .extra .value { min-height: 28px; }
+            .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 48px; text-align: center; }
+            .sign-line { min-height: 30px; border-bottom: 2px solid #111; }
+            @media print { tr { break-inside: avoid; } }
+          </style>
+        </head>
+        <body><main class="sheet">
+          <h1>اڈہ پرچی</h1>
+          <section class="info">
+            <div class="field"><span class="label">نمبر:</span><span class="value number">${escapeHtml(documentNumber)}</span></div>
+            <div class="field"><span class="label">تاریخ:</span><span class="value number">${escapeHtml(formatDate(documentDate))}</span></div>
+            <div class="field"><span class="label">اڈہ کا نام:</span><span class="value">${escapeHtml(transporterLabel(addaName))}</span></div>
+            <div class="field"><span class="label">برائے:</span><span class="value">${escapeHtml(forLabel)}</span></div>
+            <div class="field"><span class="label">پارٹی / لینے والا:</span><span class="value">${escapeHtml(customerName)}</span></div>
+            <div class="field"><span class="label">فون نمبر:</span><span class="value number">${escapeHtml(customer?.mobile_no || '')}</span></div>
+          </section>
+          <table>
+            <thead><tr><th>نَگ</th><th>بھرتی</th><th>جنس</th><th>کل وزن</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+            <tfoot><tr><td colspan="4"><div class="totals">
+              <span>کل نَگ: <span class="number">${escapeHtml(formatNumber(totalPackages))}</span></span>
+              <span>کل وزن: <span class="number">${escapeHtml(formatNumber(totalWeight))}</span> کلو</span>
+            </div></td></tr></tfoot>
+          </table>
+          <div class="rent">
+            <span><strong>رکشہ کرایہ:</strong> <b class="number">${escapeHtml(formatNumber(this.form.controls.rentAmount.value))}</b></span>
+            <span><strong>کرایہ کی حالت:</strong> ${escapeHtml(rentStatus)}</span>
+          </div>
+          <p class="note">نوٹ: مال موقع پر چیک کر لیں، کمپنی بعد میں کسی نقصان کی ذمہ دار نہ ہوگی۔ شکریہ۔</p>
+          <div class="extra"><strong>اضافی تفصیل:</strong><span class="value">${escapeHtml(this.form.controls.remarks.value)}</span></div>
+          <section class="signatures">
+            <div><div class="sign-line"></div><strong>دستخط تیار کنندہ</strong></div>
+            <div><div class="sign-line"></div><strong>انچارج</strong></div>
+          </section>
+        </main></body></html>`;
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      const triggerPrint = () => {
+        printWindow.focus();
+        printWindow.print();
+      };
+      if (printWindow.document.readyState === 'complete') {
+        setTimeout(triggerPrint, 300);
+      } else {
+        printWindow.onload = () => setTimeout(triggerPrint, 300);
+      }
+  }
+
+  private rentStatusToFrappe(value: string): string {
+    return value === 'paid' ? 'ادا کر دیا گیا ہے' : value === 'pending' ? 'ادا کرنا ہے' : '';
+  }
+
+  private rentStatusFromFrappe(value?: string | null): string {
+    return value === 'ادا کر دیا گیا ہے' ? 'paid' : value === 'ادا کرنا ہے' ? 'pending' : '';
+  }
+
+  private calculateItemWeight(quantity: string, conversionFactor: number): string {
+    const parsedQuantity = Number(quantity);
+    return Number.isFinite(parsedQuantity) && quantity.trim()
+      ? String(parsedQuantity * conversionFactor)
+      : '';
   }
 
   private today(): string {
