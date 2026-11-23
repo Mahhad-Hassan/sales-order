@@ -559,14 +559,15 @@ export class DeliveryNoteFormPage {
   }
 
   private setNewOrderDefaults(): void {
-    if (this.companies().length !== 1) {
-      return;
+    const company = this.companies().length === 1 ? this.companies()[0] : undefined;
+    if (company) {
+      this.selectedCompany.set(company.name);
     }
-    const company = this.companies()[0];
-    this.selectedCompany.set(company.name);
     this.form.patchValue({
-      company: company.name,
-      warehouse: company.default_warehouse ?? '',
+      ...(company ? {
+        company: company.name,
+        warehouse: company.default_warehouse ?? '',
+      } : {}),
       priceList: this.standardSellingPriceList()?.name ?? '',
     }, { emitEvent: false });
     this.applyCompanyFieldPermission();
