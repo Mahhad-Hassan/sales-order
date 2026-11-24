@@ -784,8 +784,12 @@ export class DeliveryNoteFormPage {
         || customer?.custom_urdu_name
         || customer?.customer_name
         || this.form.controls.customer.value;
-      const rows = this.itemRows().filter((row) => row.item_code || row.qty || row.packageCount);
-      const totalPackages = rows.reduce((total, row) => total + (Number(row.packageCount) || 0), 0);
+      const itemRows = this.itemRows();
+      const rows = itemRows.filter((row) => row.item_code || row.qty || row.packageCount);
+      const totalPackages = itemRows.reduce((total, row) => {
+        const packages = Number(row.packageCount);
+        return total + (Number.isFinite(packages) ? packages : 0);
+      }, 0);
       const totalWeight = rows.reduce((total, row) => total + (Number(row.weight) || 0), 0);
       const rowsHtml = rows.map((row) => {
         const item = this.selectedItem(row.item_code);

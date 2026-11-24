@@ -198,8 +198,6 @@
                   }
                 </select>
               </label>
-              <label class="form-field"><span class="form-field-label">Transport Receipt No</span><input class="form-input" formControlName="lrNo" /></label>
-              <label class="form-field"><span class="form-field-label">Transport Receipt Date</span><input class="form-input" type="date" formControlName="lrDate" /></label>
               <label class="form-field"><span class="form-field-label">Vehicle No</span><input class="form-input" formControlName="vehicleNo" /></label>
               <label class="form-field"><span class="form-field-label">Contact Number</span><input class="form-input" formControlName="contact" inputmode="tel" /></label>
               <label class="form-field"><span class="form-field-label">Rickshaw Fare</span><input class="form-input" type="number" min="0" step="any" formControlName="rentAmount" /></label>
@@ -211,18 +209,7 @@
                   <option value="pending">Pending</option>
                 </select>
               </label>
-              <label class="form-field">
-                <span class="form-field-label">Driver</span>
-                <select class="form-input" formControlName="driver">
-                  <option value="">Select driver...</option>
-                  @for (driver of drivers(); track driver.name) {
-                    <option [value]="driver.name">{{ driver.full_name || driver.name }}</option>
-                  }
-                </select>
-              </label>
               <label class="form-field"><span class="form-field-label">Driver Name</span><input class="form-input" formControlName="driverName" /></label>
-              <label class="form-field"><span class="form-field-label">Customer's Purchase Order No</span><input class="form-input" formControlName="poNo" /></label>
-              <label class="form-field"><span class="form-field-label">Customer's Purchase Order Date</span><input class="form-input" type="date" formControlName="poDate" /></label>
             </div>
             <label class="form-field mt-4">
               <span class="form-field-label">Terms and Conditions</span>
