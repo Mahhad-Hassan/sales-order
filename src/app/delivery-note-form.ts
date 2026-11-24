@@ -221,7 +221,7 @@ export class DeliveryNoteFormPage {
 
   protected setItemField(
     index: number,
-    field: 'item_code' | 'uom' | 'qty' | 'warehouse' | 'rate' | 'packageCount' | 'packageType',
+    field: 'item_code' | 'uom' | 'qty' | 'warehouse' | 'rate' | 'packageCount',
     event: Event,
   ): void {
     const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
@@ -340,7 +340,6 @@ export class DeliveryNoteFormPage {
         conversion_factor: row.conversion_factor,
         total_qty: Number(row.weight) || quantity * row.conversion_factor,
         custom_package_count: Number(row.packageCount) || 0,
-        custom_package_type: row.packageType || '',
         warehouse: row.warehouse || this.form.controls.warehouse.value || null,
         rate,
         amount: quantity * rate,
@@ -495,7 +494,7 @@ export class DeliveryNoteFormPage {
           weight: String(item.total_qty ?? Number(item.qty ?? 0) * Number(item.conversion_factor ?? 1)),
           warehouse: item.warehouse ?? '',
           packageCount: item.custom_package_count == null ? '' : String(item.custom_package_count),
-          packageType: item.custom_package_type ?? '',
+          packageType: this.selectedItem(item.item_code)?.custom_package_type ?? item.custom_package_type ?? '',
           rate: item.rate === undefined ? '' : String(item.rate),
           amount: item.amount === undefined
             ? this.calculateItemAmount(String(item.qty ?? ''), item.rate === undefined ? '' : String(item.rate))
@@ -791,10 +790,12 @@ export class DeliveryNoteFormPage {
       const rowsHtml = rows.map((row) => {
         const item = this.selectedItem(row.item_code);
         const group = this.itemGroups().find((option) => option.name === item?.item_group);
-        const packageType = this.packageTypes().find((option) => option.name === row.packageType);
+        const packageTypeLink = String(item?.custom_package_type ?? row.packageType ?? '').trim();
+        const packageType = this.packageTypes().find((option) => option.name === packageTypeLink);
+        const packageTypeLabel = String(packageType?.package_name_urdu ?? '').trim() || packageTypeLink;
         return `<tr>
           <td class="number">${escapeHtml(formatNumber(row.packageCount))}</td>
-          <td>${escapeHtml(packageType?.package_name_urdu || packageType?.package_name || row.packageType)}</td>
+          <td>${escapeHtml(packageTypeLabel)}</td>
           <td>${escapeHtml(group?.custom_urdu_name || group?.parent_item_group || group?.name || '')}</td>
           <td class="number">${escapeHtml(formatNumber(row.weight))}</td>
         </tr>`;
