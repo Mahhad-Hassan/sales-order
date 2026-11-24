@@ -1,4 +1,4 @@
-const BACKEND_ORIGIN = 'https://dev04.agrovisions.pk';
+const BACKEND_ORIGIN = 'https://dev05.agrovisions.pk';
 const PROXY_PREFIX = '/api/frappe-proxy';
 const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 const FRAPPE_COOKIE_NAMES = new Set([

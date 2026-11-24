@@ -1,6 +1,6 @@
 {
   "/api/**": {
-    "target": "https://dev04.agrovisions.pk",
+    "target": "https://dev05.agrovisions.pk",
     "changeOrigin": true
   }
 }
