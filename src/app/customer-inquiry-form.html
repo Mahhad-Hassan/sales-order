@@ -1,5 +1,5 @@
 <div class="sales-order-page min-h-screen">
-  <header class="sales-order-topbar relative flex min-h-[72px] items-center justify-between border-b px-[clamp(20px,5vw,76px)] max-[580px]:px-4">
+  <header class="sales-order-topbar relative flex min-h-[72px] flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-[clamp(20px,5vw,76px)] py-2 max-[580px]:px-3">
     <a class="sales-order-brand inline-flex items-center gap-3 no-underline" routerLink="/home" aria-label="Home">
       <span class="sales-order-logo" aria-hidden="true">AV</span>
       <span class="text-left">
@@ -7,10 +7,10 @@
         <small class="mt-1 block text-xs">Customer Inquiry Management</small>
       </span>
     </a>
-    <div class="flex items-center gap-3">
+    <div class="flex shrink-0 items-center gap-3 max-[380px]:gap-1.5">
       <span class="text-sm font-semibold text-[#24765f] max-[580px]:hidden">{{ currentUser }}</span>
-      <a class="rounded-lg border border-[#d6e0da] bg-white px-3 py-1 text-sm font-bold text-[#24765f] no-underline hover:bg-[#f3f8f5]" routerLink="/home" aria-label="Go to home">Home</a>
-      <button class="rounded-lg border border-[#e0e8e4] bg-white px-3 py-1 text-sm font-bold text-[#a34539] hover:bg-[#fff7f6]" type="button" (click)="logout()">Sign out</button>
+      <a class="rounded-lg border border-[#d6e0da] bg-white px-3 py-1 text-sm font-bold text-[#24765f] no-underline hover:bg-[#f3f8f5] max-[380px]:px-2 max-[380px]:text-xs" routerLink="/home" aria-label="Go to home">Home</a>
+      <button class="rounded-lg border border-[#e0e8e4] bg-white px-3 py-1 text-sm font-bold text-[#a34539] hover:bg-[#fff7f6] max-[380px]:px-2 max-[380px]:text-xs" type="button" (click)="logout()">Sign out</button>
     </div>
   </header>
 
@@ -173,26 +173,26 @@
             <div class="mb-4">
               <h2 class="form-section-title m-0"><i aria-hidden="true"></i>Requested Items</h2>
             </div>
-            <div class="overflow-x-auto rounded-xl border border-[#d6e0da]" (scroll)="updateItemDropdownPosition()">
-              <table class="requested-items-table w-full min-w-[1320px] border-collapse text-left text-sm">
+            <div class="hidden overflow-x-auto rounded-xl border border-[#d6e0da] lg:block" (scroll)="updateItemDropdownPosition()">
+              <table class="requested-items-table w-full min-w-0 table-fixed border-collapse text-left text-sm">
                 <thead class="bg-[#f3f8f5] text-[#344a42]">
                   <tr>
-                    <th class="border-r border-[#d6e0da] p-3 font-bold">Item *</th>
-                    <th class="border-r border-[#d6e0da] p-3 font-bold">Description</th>
-                    <th class="border-r border-[#d6e0da] p-3 font-bold">Qty *</th>
-                    <th class="border-r border-[#d6e0da] p-3 font-bold">UOM</th>
-                    <th class="border-r border-[#d6e0da] p-3 font-bold">Container No</th>
-                    <th class="border-r border-[#d6e0da] p-3 font-bold">Preferred Brand</th>
-                    <th class="border-r border-[#d6e0da] p-3 font-bold">Shipment Load</th>
+                    <th class="w-[18%] border-r border-[#d6e0da] p-2 font-bold">Item *</th>
+                    <th class="w-[18%] border-r border-[#d6e0da] p-2 font-bold">Description</th>
+                    <th class="w-[8%] border-r border-[#d6e0da] p-2 font-bold">Qty *</th>
+                    <th class="w-[10%] border-r border-[#d6e0da] p-2 font-bold">UOM</th>
+                    <th class="w-[12%] border-r border-[#d6e0da] p-2 font-bold">Container No</th>
+                    <th class="w-[14%] border-r border-[#d6e0da] p-2 font-bold">Preferred Brand</th>
+                    <th class="w-[13%] border-r border-[#d6e0da] p-2 font-bold">Shipment Load</th>
                     @if (!isReadOnly) {
-                      <th class="w-24 p-3 text-center font-bold">Action</th>
+                      <th class="w-[7%] p-2 text-center font-bold">Action</th>
                     }
                   </tr>
                 </thead>
                 <tbody>
                   @for (row of itemRows(); track row.rowId; let rowIndex = $index) {
                     <tr class="align-top">
-                      <td class="min-w-[220px] border-t border-r border-[#d6e0da] p-2">
+                      <td class="border-t border-r border-[#d6e0da] p-1">
                         <div class="customer-field relative">
                           <button
                             class="relative flex min-h-[40px] w-full items-center justify-between rounded px-2 text-left text-sm font-normal cursor-pointer"
@@ -210,33 +210,33 @@
                           </button>
                         </div>
                       </td>
-                      <td class="min-w-[180px] border-t border-r border-[#d6e0da] p-2">
-                        <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" [value]="row.item_description" disabled />
+                      <td class="border-t border-r border-[#d6e0da] p-1">
+                        <input class="form-input min-w-0 border-0 bg-transparent px-1 text-xs shadow-none focus:ring-0" [value]="row.item_description" disabled />
                       </td>
-                      <td class="min-w-[100px] border-t border-r border-[#d6e0da] p-2">
-                        <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'qty', $event)" />
+                      <td class="border-t border-r border-[#d6e0da] p-1">
+                        <input class="form-input min-w-0 border-0 bg-transparent px-1 text-xs shadow-none focus:ring-0" type="number" min="0.001" step="any" [value]="row.qty" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'qty', $event)" />
                       </td>
-                      <td class="min-w-[120px] border-t border-r border-[#d6e0da] p-2">
-                        <select class="form-input border-0 bg-transparent shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
+                      <td class="border-t border-r border-[#d6e0da] p-1">
+                        <select class="form-input min-w-0 border-0 bg-transparent px-1 text-xs shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'uom', $event)">
                           <option value="" [selected]="!row.uom">Select UOM...</option>
                           @for (uom of uoms(); track uom.name) {
                             <option [value]="uom.name" [selected]="uom.name === row.uom">{{ uom.name }}</option>
                           }
                         </select>
                       </td>
-                      <td class="min-w-[140px] border-t border-r border-[#d6e0da] p-2">
-                        <input class="form-input border-0 bg-transparent shadow-none focus:ring-0" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
+                      <td class="border-t border-r border-[#d6e0da] p-1">
+                        <input class="form-input min-w-0 border-0 bg-transparent px-1 text-xs shadow-none focus:ring-0" [value]="row.container_no" [disabled]="isReadOnly" (input)="setInquiryField(rowIndex, 'container_no', $event)" />
                       </td>
-                      <td class="min-w-[170px] border-t border-r border-[#d6e0da] p-2">
-                        <select class="form-input border-0 bg-transparent shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'preferred_brand', $event)">
+                      <td class="border-t border-r border-[#d6e0da] p-1">
+                        <select class="form-input min-w-0 border-0 bg-transparent px-1 text-xs shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'preferred_brand', $event)">
                           <option value="" [selected]="!row.preferred_brand">Select brand...</option>
                           @for (brand of brands(); track brand.name) {
                             <option [value]="brand.name" [selected]="brand.name === row.preferred_brand">{{ brand.name }}</option>
                           }
                         </select>
                       </td>
-                      <td class="min-w-[150px] border-t border-r border-[#d6e0da] p-2">
-                        <select class="form-input border-0 bg-transparent shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
+                      <td class="border-t border-r border-[#d6e0da] p-1">
+                        <select class="form-input min-w-0 border-0 bg-transparent px-1 text-xs shadow-none focus:ring-0" [disabled]="isReadOnly" (change)="setInquiryField(rowIndex, 'shipment_load', $event)">
                           <option value="" [selected]="!row.shipment_load">Select shipment load...</option>
                           @for (option of shipmentLoads(); track option) {
                             <option [value]="option" [selected]="option === row.shipment_load">{{ option }}</option>
@@ -244,8 +244,8 @@
                         </select>
                       </td>
                       @if (!isReadOnly) {
-                        <td class="w-24 border-t border-[#d6e0da] p-2 text-center align-middle">
-                          <div class="flex items-center justify-center gap-1">
+                        <td class="border-t border-[#d6e0da] p-1 text-center align-middle">
+                          <div class="flex flex-wrap items-center justify-center gap-1">
                             <button
                               class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#cbd9d1] bg-white text-[#24765f] transition-colors hover:bg-[#f3f8f5]"
                               type="button"
@@ -278,6 +278,41 @@
                   }
                 </tbody>
               </table>
+            </div>
+            <div class="grid gap-3 lg:hidden">
+              @for (row of itemRows(); track row.rowId; let rowIndex = $index) {
+                <article class="rounded-xl border border-[#d6e0da] bg-white p-3 shadow-sm sm:p-4">
+                  <div class="mb-3 flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <h3 class="m-0 text-sm font-extrabold text-[#14332b]">Item {{ rowIndex + 1 }}</h3>
+                      <p class="mb-0 mt-1 break-words text-sm font-semibold text-[#344a42]">{{ row.item_description || row.item_code || 'No item selected' }}</p>
+                      @if (row.item_code && row.item_description !== row.item_code) {
+                        <p class="mb-0 mt-0.5 break-all text-xs text-[#6d7d77]">{{ row.item_code }}</p>
+                      }
+                    </div>
+                    @if (!isReadOnly) {
+                      <div class="flex shrink-0 gap-2">
+                        <button class="min-h-9 rounded-lg border border-[#cbd9d1] bg-white px-3 text-sm font-bold text-[#24765f] hover:bg-[#f3f8f5]" type="button" [attr.aria-label]="'Edit item row ' + (rowIndex + 1)" (click)="openItemEditor(row.rowId)">Edit</button>
+                        <button class="min-h-9 rounded-lg border border-[#e8bdb7] bg-white px-3 text-sm font-bold text-[#a34539] hover:bg-[#fff7f6] disabled:opacity-50" type="button" [attr.aria-label]="'Remove item row ' + (rowIndex + 1)" [disabled]="itemRows().length === 1" (click)="removeItem(rowIndex)">Remove</button>
+                      </div>
+                    }
+                  </div>
+                  <dl class="m-0 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    <div class="min-w-0"><dt class="text-xs font-bold text-[#6d7d77]">Qty</dt><dd class="m-0 break-words text-[#344a42]">{{ row.qty || '—' }}</dd></div>
+                    <div class="min-w-0"><dt class="text-xs font-bold text-[#6d7d77]">UOM</dt><dd class="m-0 break-words text-[#344a42]">{{ row.uom || '—' }}</dd></div>
+                    <div class="min-w-0"><dt class="text-xs font-bold text-[#6d7d77]">Container No</dt><dd class="m-0 break-words text-[#344a42]">{{ row.container_no || '—' }}</dd></div>
+                    <div class="min-w-0"><dt class="text-xs font-bold text-[#6d7d77]">Preferred Brand</dt><dd class="m-0 break-words text-[#344a42]">{{ row.preferred_brand || '—' }}</dd></div>
+                    <div class="min-w-0"><dt class="text-xs font-bold text-[#6d7d77]">Shipment Load</dt><dd class="m-0 break-words text-[#344a42]">{{ row.shipment_load || '—' }}</dd></div>
+                    <div class="min-w-0"><dt class="text-xs font-bold text-[#6d7d77]">Target Price</dt><dd class="m-0 break-words text-[#344a42]">{{ row.target_price || '—' }}</dd></div>
+                  </dl>
+                  @if (row.item_description && row.item_code) {
+                    <p class="mb-0 mt-3 break-words border-t border-[#e3eae6] pt-2 text-sm text-[#6d7d77]">{{ row.item_description }}</p>
+                  }
+                  @if (row.remarks) {
+                    <p class="mb-0 mt-2 break-words text-sm text-[#6d7d77]">{{ row.remarks }}</p>
+                  }
+                </article>
+              }
             </div>
             @if (itemDropdownRowId() !== null) {
               <div
